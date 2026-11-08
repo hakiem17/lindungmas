@@ -78,3 +78,4 @@ WITH CHECK (true);
 
 -- Verifikasi status RLS
 SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public';
+

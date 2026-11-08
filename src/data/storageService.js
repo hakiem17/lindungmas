@@ -1993,12 +1993,12 @@ export const saveKegiatanPatroli = async (data) => {
         aksi: 'UBAH',
         modul: 'Kegiatan dan Patroli',
         target: `${payload.judul_patroli} (${payload.kode})`,
-        detail: `Pembaruan laporan patroli di Desa ${payload.desa_kelurahan}, Kec. ${payload.kecamatan} langsung ke database Supabase.`
+        detail: `Pembaruan laporan patroli di Desa ${payload.desa_kelurahan}, Kec. ${payload.kecamatan} langsung ke database.`
       });
 
       return mapKegiatanPatroliFromDB(updated);
     } else {
-      // Simpan data baru langsung ke Supabase tanpa menggunakan local storage
+      // Simpan data baru langsung ke database tanpa menggunakan local storage
       const { data: inserted, error } = await supabase
         .from('kegiatan_patroli')
         .insert([payload])
@@ -2006,7 +2006,7 @@ export const saveKegiatanPatroli = async (data) => {
         .single();
 
       if (error) {
-        console.error('Supabase insert error:', error);
+        console.error('Database insert error:', error);
         if (error.code === '42501' || String(error.message).includes('row-level security')) {
           throw new Error('RLS_POLICY_BLOCKED');
         }
@@ -2017,14 +2017,14 @@ export const saveKegiatanPatroli = async (data) => {
         aksi: 'INPUT',
         modul: 'Kegiatan dan Patroli',
         target: `${payload.judul_patroli} (${payload.kode})`,
-        detail: `Laporan kegiatan/patroli baru oleh ${payload.petugas_pelapor} di Kec. ${payload.kecamatan} berhasil tersimpan langsung ke database Supabase.`
+        detail: `Laporan kegiatan/patroli baru oleh ${payload.petugas_pelapor} di Kec. ${payload.kecamatan} berhasil tersimpan langsung ke database.`
       });
 
       return mapKegiatanPatroliFromDB(inserted);
     }
   }
 
-  // Fallback jika Supabase belum terkonfigurasi
+  // Fallback jika database belum terkonfigurasi
   let list = getKegiatanPatroliList();
   const newKegiatan = { ...data, id: `keg-${Date.now().toString().slice(-6)}` };
   list = [newKegiatan, ...list];
@@ -2041,14 +2041,14 @@ export const deleteKegiatanPatroli = async (id, kode) => {
       res = await supabase.from('kegiatan_patroli').delete().eq('kode', kode);
     }
     if (res?.error) {
-      console.error('Supabase delete error:', res.error);
+      console.error('Database delete error:', res.error);
       throw new Error(res.error.message);
     }
     addAuditLog({
       aksi: 'HAPUS',
       modul: 'Kegiatan dan Patroli',
       target: `Laporan Patroli (${kode || id})`,
-      detail: `Penghapusan laporan kegiatan patroli langsung dari database Supabase.`
+      detail: `Penghapusan laporan kegiatan patroli langsung dari database.`
     });
     return true;
   }

@@ -380,11 +380,11 @@ export default function KegiatanPatroli({
       const saved = await saveKegiatanPatroli(formData);
       setIsFormModalOpen(false);
       if (onRefreshData) await onRefreshData();
-      alert(`Laporan patroli "${saved.judulPatroli}" (${saved.kode}) berhasil tersimpan langsung ke database Supabase!`);
+      alert(`Laporan patroli "${saved.judulPatroli}" (${saved.kode}) berhasil tersimpan langsung ke database!`);
     } catch (err) {
       console.error('Error saving patrol report directly to database:', err);
       if (err.message === 'RLS_POLICY_BLOCKED') {
-        alert('⚠️ Izin Database Supabase (RLS Policy) untuk tabel kegiatan_patroli belum diaktifkan.\n\nSilakan buka menu SQL Editor di Supabase Dashboard Anda dan jalankan file "supabase_rls_patroli.sql" yang telah kami sediakan agar browser diizinkan menyimpan data langsung.');
+        alert('⚠️ Izin penyimpanan database belum diaktifkan.\n\nSilakan jalankan file SQL izin database yang telah disediakan agar sistem diizinkan menyimpan data langsung.');
       } else {
         alert(`Gagal menyimpan laporan ke database: ${err.message || 'Kendala koneksi'}`);
       }
