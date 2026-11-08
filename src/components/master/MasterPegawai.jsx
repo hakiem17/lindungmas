@@ -12,64 +12,89 @@ import {
   Mail, 
   BadgeCheck, 
   UserCheck, 
-  AlertCircle,
-  CheckCircle2,
-  X
+  AlertCircle, 
+  CheckCircle2, 
+  X,
+  ArrowUp,
+  ArrowDown,
+  GraduationCap,
+  Briefcase,
+  Building2,
+  FileSpreadsheet,
+  Eye
 } from 'lucide-react';
 import Modal from '../common/Modal';
-import { savePegawai, deletePegawai } from '../../data/storageService';
+import { savePegawai, deletePegawai, movePegawai } from '../../data/storageService';
 
-export default function MasterPegawai({ pegawaiList, onRefreshData }) {
+export default function MasterPegawai({ pegawaiList = [], onRefreshData }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPeran, setSelectedPeran] = useState('semua');
-  const [selectedRegu, setSelectedRegu] = useState('semua');
+  const [selectedStatusKepegawaian, setSelectedStatusKepegawaian] = useState('semua');
+  const [selectedPendidikan, setSelectedPendidikan] = useState('semua');
   const [selectedStatus, setSelectedStatus] = useState('semua');
 
-  // Modal State (Add / Edit)
+  // Modal State (Add / Edit / Detail)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPegawai, setEditingPegawai] = useState(null);
+  const [detailPegawai, setDetailPegawai] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   // Form State
   const [nama, setNama] = useState('');
   const [nip, setNip] = useState('');
-  const [pangkat, setPangkat] = useState('Pengatur (II/c)');
+  const [jk, setJk] = useState('Laki-laki');
+  const [pangkat, setPangkat] = useState('Penata Muda (III/a)');
   const [jabatan, setJabatan] = useState('');
-  const [regu, setRegu] = useState('Regu I (Kijang 01)');
-  const [peran, setPeran] = useState('user');
+  const [statusKepegawaian, setStatusKepegawaian] = useState('PNS');
+  const [pendidikan, setPendidikan] = useState('S-1');
   const [noHp, setNoHp] = useState('');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('Aktif');
 
   // Filter list
-  const filtered = pegawaiList.filter(item => {
+  const sortedList = [...pegawaiList].sort((a, b) => (a.urutan ?? 1e9) - (b.urutan ?? 1e9));
+  const isFiltering = Boolean(searchTerm) || selectedStatusKepegawaian !== 'semua' || selectedPendidikan !== 'semua' || selectedStatus !== 'semua';
+
+  const handleMove = async (id, dir) => {
+    await movePegawai(id, dir);
+    if (onRefreshData) onRefreshData();
+  };
+
+  const filtered = sortedList.filter(item => {
     const matchSearch = 
-      item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.nip.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.jabatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.regu && item.regu.toLowerCase().includes(searchTerm.toLowerCase()));
+      (item.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.nip || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.jabatan || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.pangkat || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchPeran = selectedPeran === 'semua' || item.peran === selectedPeran;
-    const matchRegu = selectedRegu === 'semua' || item.regu === selectedRegu;
-    const matchStatus = selectedStatus === 'semua' || item.status === selectedStatus;
+    const matchStatusPeg = selectedStatusKepegawaian === 'semua' || 
+      (item.statusKepegawaian || 'PNS').toLowerCase() === selectedStatusKepegawaian.toLowerCase();
 
-    return matchSearch && matchPeran && matchRegu && matchStatus;
+    const matchPendidikan = selectedPendidikan === 'semua' || 
+      (item.pendidikan || 'S-1').toLowerCase() === selectedPendidikan.toLowerCase();
+
+    const matchStatus = selectedStatus === 'semua' || 
+      (item.status || 'Aktif').toLowerCase() === selectedStatus.toLowerCase();
+
+    return matchSearch && matchStatusPeg && matchPendidikan && matchStatus;
   });
 
   // Calculate statistics
   const totalPegawai = pegawaiList.length;
-  const countAdmin = pegawaiList.filter(p => p.peran === 'admin').length;
-  const countUser = pegawaiList.filter(p => p.peran === 'user').length;
-  const countAktif = pegawaiList.filter(p => p.status === 'Aktif').length;
+  const countPns = pegawaiList.filter(p => (p.statusKepegawaian || 'PNS') === 'PNS').length;
+  const countPppk = pegawaiList.filter(p => (p.statusKepegawaian || '') === 'PPPK').length;
+  const countS1 = pegawaiList.filter(p => (p.pendidikan || '').includes('S-1') || (p.pendidikan || '').includes('S1')).length;
+  const countSma = pegawaiList.filter(p => (p.pendidikan || '').includes('SMA')).length;
+  const countAktif = pegawaiList.filter(p => (p.status || 'Aktif') === 'Aktif').length;
 
   const handleOpenAdd = () => {
     setEditingPegawai(null);
     setNama('');
     setNip('');
-    setPangkat('Pengatur (II/c)');
-    setJabatan('Petugas Lapangan Trantibum');
-    setRegu('Regu I (Kijang 01)');
-    setPeran('user');
+    setJk('Laki-laki');
+    setPangkat('Penata Muda (III/a)');
+    setJabatan('Polisi Pamong Praja Pelaksana Lanjutan');
+    setStatusKepegawaian('PNS');
+    setPendidikan('S-1');
     setNoHp('');
     setEmail('');
     setStatus('Aktif');
@@ -80,10 +105,11 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
     setEditingPegawai(peg);
     setNama(peg.nama || '');
     setNip(peg.nip || '');
-    setPangkat(peg.pangkat || '');
+    setJk(peg.jk || 'Laki-laki');
+    setPangkat(peg.pangkat || 'Penata Muda (III/a)');
     setJabatan(peg.jabatan || '');
-    setRegu(peg.regu || 'Regu I (Kijang 01)');
-    setPeran(peg.peran || 'user');
+    setStatusKepegawaian(peg.statusKepegawaian || 'PNS');
+    setPendidikan(peg.pendidikan || 'S-1');
     setNoHp(peg.noHp || '');
     setEmail(peg.email || '');
     setStatus(peg.status || 'Aktif');
@@ -99,14 +125,15 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
 
     savePegawai({
       id: editingPegawai ? editingPegawai.id : undefined,
-      nama,
-      nip,
+      nama: nama.trim(),
+      nip: nip.trim(),
+      jk,
       pangkat,
-      jabatan,
-      regu,
-      peran,
-      noHp,
-      email,
+      jabatan: jabatan.trim(),
+      statusKepegawaian,
+      pendidikan,
+      noHp: noHp.trim(),
+      email: email.trim(),
       status
     });
 
@@ -121,18 +148,18 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
   };
 
   const handleExportCSV = () => {
-    const headers = ['No', 'Nama Pegawai', 'NIP', 'Pangkat/Gol', 'Jabatan', 'Regu Penugasan', 'Peran Sistem', 'No. HP', 'Email', 'Status'];
+    const headers = ['No', 'Nama Lengkap', 'NIP / NRP', 'Jenis Kelamin', 'Pangkat / Golongan', 'Jabatan Kedinasan', 'Status Kepegawaian', 'Pendidikan', 'No. Telepon', 'Status'];
     const rows = filtered.map((item, idx) => [
       `"${idx + 1}"`,
       `"${item.nama}"`,
       `"${item.nip}"`,
+      `"${item.jk || 'Laki-laki'}"`,
       `"${item.pangkat || '-'}"`,
       `"${item.jabatan}"`,
-      `"${item.regu || '-'}"`,
-      `"${item.peran.toUpperCase()}"`,
+      `"${item.statusKepegawaian || 'PNS'}"`,
+      `"${item.pendidikan || 'S-1'}"`,
       `"${item.noHp || '-'}"`,
-      `"${item.email || '-'}"`,
-      `"${item.status}"`
+      `"${item.status || 'Aktif'}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -153,72 +180,62 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#0F2A4A] text-white flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-[#F0B429]" />
-              MASTER DATA KEPEGAWAIAN
+              DATA MASTER KEPEGAWAIAN
             </span>
             <span className="text-xs text-slate-500 font-medium">Satpol PP Kab. HST</span>
           </div>
           <h2 className="text-xl font-extrabold text-[#0F2A4A] mt-1.5 tracking-tight">
-            Data Pegawai & Personel Operasional
+            Master Data Pegawai Satpol PP Kabupaten Hulu Sungai Tengah
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Daftar lengkap aparatur Satpol PP, kepala regu, serta petugas lapangan penegak Perda di Hulu Sungai Tengah
+            Database kepegawaian aparatur sipil Satpol PP & Damkar Kabupaten Hulu Sungai Tengah bersumber langsung dari Database Supabase (Live).
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => window.print()}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Printer className="w-4 h-4 text-slate-600" />
-            <span>Cetak Data</span>
-          </button>
-          
+        <div className="flex items-center gap-2 self-start md:self-auto">
           <button
             onClick={handleExportCSV}
-            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4 text-emerald-600" />
-            <span>Unduh CSV</span>
+            <Download className="w-4 h-4 text-slate-600" />
+            Ekspor CSV
           </button>
-
           <button
             onClick={handleOpenAdd}
-            className="px-4 py-2 bg-[#0F2A4A] hover:bg-[#14365D] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-[#0F2A4A]/20 transition-all cursor-pointer"
+            className="px-4 py-2 bg-[#0F2A4A] hover:bg-[#14365D] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 text-[#F0B429]" />
-            <span>Tambah Pegawai Baru</span>
+            Tambah Pegawai
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Personel</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Personel Satpol PP</span>
           <p className="text-2xl font-extrabold text-[#0F2A4A] mt-1 font-mono">{totalPegawai}</p>
+          <span className="text-[11px] text-slate-500 mt-1 block">Aparatur Tercatat di HST</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status Kepegawaian</span>
+          <p className="text-2xl font-extrabold text-blue-700 mt-1 font-mono">{countPns} PNS</p>
+          <span className="text-[11px] text-slate-500 mt-1 block">{countPppk} PPPK / Tenaga Kontrak</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kualifikasi Pendidikan</span>
+          <p className="text-2xl font-extrabold text-purple-700 mt-1 font-mono">{countS1} Sarjana</p>
+          <span className="text-[11px] text-slate-500 mt-1 block">{countSma} SMA / Sederajat</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Keaktifan Personel</span>
+          <p className="text-2xl font-extrabold text-emerald-600 mt-1 font-mono">{countAktif}</p>
           <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> {countAktif} Personel Aktif
+            <CheckCircle2 className="w-3.5 h-3.5" /> 100% Siap Bertugas
           </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Petugas Lapangan (User)</span>
-          <p className="text-2xl font-extrabold text-blue-700 mt-1 font-mono">{countUser}</p>
-          <span className="text-[11px] text-slate-500 mt-1 block">Regu Patroli & Tim Tindak</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pimpinan & Penegakan (Admin)</span>
-          <p className="text-2xl font-extrabold text-purple-700 mt-1 font-mono">{countAdmin}</p>
-          <span className="text-[11px] text-slate-500 mt-1 block">Verifikator & Pejabat Penegak</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unit Operasional</span>
-          <p className="text-2xl font-extrabold text-amber-600 mt-1 font-mono">4 Regu</p>
-          <span className="text-[11px] text-slate-500 mt-1 block">Kijang 01, 02, Penegakan, Mako</span>
         </div>
       </div>
 
@@ -226,43 +243,41 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
           {/* Search box */}
-          <div className="sm:col-span-4 relative">
+          <div className="sm:col-span-5 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari nama, NIP, atau jabatan pegawai..."
+              placeholder="Cari nama, NIP, pangkat, atau jabatan pegawai..."
               className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden"
             />
           </div>
 
-          {/* Filter Peran */}
+          {/* Filter Status Kepegawaian */}
           <div className="sm:col-span-3">
             <select
-              value={selectedPeran}
-              onChange={(e) => setSelectedPeran(e.target.value)}
+              value={selectedStatusKepegawaian}
+              onChange={(e) => setSelectedStatusKepegawaian(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden bg-white"
             >
-              <option value="semua">Semua Peran Sistem</option>
-              <option value="admin">Admin (Pimpinan / Penegakan)</option>
-              <option value="user">User (Petugas Lapangan)</option>
+              <option value="semua">Semua Status Kepegawaian</option>
+              <option value="PNS">PNS (Pegawai Negeri Sipil)</option>
+              <option value="PPPK">PPPK</option>
+              <option value="Non-PNS">Non-PNS / Kontrak</option>
             </select>
           </div>
 
-          {/* Filter Regu */}
-          <div className="sm:col-span-3">
+          {/* Filter Pendidikan */}
+          <div className="sm:col-span-2">
             <select
-              value={selectedRegu}
-              onChange={(e) => setSelectedRegu(e.target.value)}
+              value={selectedPendidikan}
+              onChange={(e) => setSelectedPendidikan(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden bg-white"
             >
-              <option value="semua">Semua Regu Penugasan</option>
-              <option value="Regu I (Kijang 01)">Regu I (Kijang 01)</option>
-              <option value="Regu II (Kijang 02)">Regu II (Kijang 02)</option>
-              <option value="Regu Penegakan Perda">Regu Penegakan Perda</option>
-              <option value="Pimpinan & Sekretariat">Pimpinan & Sekretariat</option>
-              <option value="Regu Tindak Cepat">Regu Tindak Cepat</option>
+              <option value="semua">Semua Pendidikan</option>
+              <option value="S-1">Sarjana (S-1)</option>
+              <option value="SMA">SMA / Sederajat</option>
             </select>
           </div>
 
@@ -289,13 +304,13 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
               <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-3 text-left border-r border-slate-200 w-12">No</th>
                 <th className="py-3 px-4 border-r border-slate-200 min-w-[220px] text-left">Nama Lengkap & Pangkat</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[150px] text-left">NIP Pegawai</th>
-                <th className="py-3 px-4 border-r border-slate-200 min-w-[190px] text-left">Jabatan Kedinasan</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[160px] text-left">Regu / Penugasan</th>
-                <th className="py-3 px-3 border-r border-slate-200 min-w-[90px] text-left">Hak Akses</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[150px] text-left">Kontak</th>
-                <th className="py-3 px-3 border-r border-slate-200 min-w-[80px] text-left">Status</th>
-                <th className="py-3 px-3.5 min-w-[110px] text-center">Aksi</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[170px] text-left">NIP Pegawai</th>
+                <th className="py-3 px-4 border-r border-slate-200 min-w-[220px] text-left">Jabatan Kedinasan</th>
+                <th className="py-3 px-3 border-r border-slate-200 min-w-[100px] text-center">Status Peg.</th>
+                <th className="py-3 px-3 border-r border-slate-200 min-w-[90px] text-center">Pendidikan</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[140px] text-left">Kontak / HP</th>
+                <th className="py-3 px-3 border-r border-slate-200 min-w-[80px] text-center">Status</th>
+                <th className="py-3 px-3.5 min-w-[170px] text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -307,28 +322,20 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
                 </tr>
               ) : (
                 filtered.map((item, idx) => {
-                  const isAdmin = item.peran === 'admin';
-                  const isAktif = item.status === 'Aktif';
+                  const isAktif = (item.status || 'Aktif') === 'Aktif';
 
                   return (
-                    <tr key={item.id} className="hover:bg-amber-50/40 transition-colors">
+                    <tr key={item.id || idx} className="hover:bg-amber-50/40 transition-colors">
                       {/* No */}
                       <td className="py-3 px-3 text-left font-mono font-bold text-slate-600 border-r border-slate-200">
                         {idx + 1}
                       </td>
 
-                      {/* Nama & Foto */}
+                      {/* Nama & Pangkat */}
                       <td className="py-3 px-4 border-r border-slate-200 text-left">
-                        <div className="flex items-center gap-3">
-                          <img 
-                            src={item.foto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'} 
-                            alt={item.nama} 
-                            className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0"
-                          />
-                          <div>
-                            <span className="font-bold text-[#0F2A4A] text-sm block leading-snug">{item.nama}</span>
-                            <span className="text-[11px] text-slate-500 font-medium">{item.pangkat || '-'}</span>
-                          </div>
+                        <div>
+                          <span className="font-bold text-[#0F2A4A] text-sm block leading-snug">{item.nama}</span>
+                          <span className="text-[11px] text-slate-500 font-medium">{item.pangkat || '-'}</span>
                         </div>
                       </td>
 
@@ -342,67 +349,77 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
                         {item.jabatan}
                       </td>
 
-                      {/* Regu */}
-                      <td className="py-3 px-3.5 border-r border-slate-200 text-left">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          {item.regu || 'Sekretariat'}
+                      {/* Status Kepegawaian */}
+                      <td className="py-3 px-3 border-r border-slate-200 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                          {item.statusKepegawaian || 'PNS'}
                         </span>
                       </td>
 
-                      {/* Hak Akses / Peran */}
-                      <td className="py-3 px-3 border-r border-slate-200 text-left">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          isAdmin 
-                            ? 'bg-purple-100 text-purple-800 border border-purple-200' 
-                            : 'bg-blue-100 text-blue-800 border border-blue-200'
-                        }`}>
-                          <ShieldCheck className="w-3 h-3" />
-                          {isAdmin ? 'ADMIN' : 'USER'}
-                        </span>
+                      {/* Pendidikan */}
+                      <td className="py-3 px-3 border-r border-slate-200 text-center font-semibold text-slate-700">
+                        {item.pendidikan || 'S-1'}
                       </td>
 
                       {/* Kontak */}
                       <td className="py-3 px-3.5 border-r border-slate-200 text-left">
-                        <div className="space-y-0.5 text-[11px]">
-                          {item.noHp && (
-                            <div className="flex items-center gap-1.5 text-slate-700 font-medium">
-                              <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span>{item.noHp}</span>
-                            </div>
-                          )}
-                          {item.email && (
-                            <div className="flex items-center gap-1.5 text-slate-500">
-                              <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="truncate max-w-[130px]">{item.email}</span>
-                            </div>
-                          )}
-                        </div>
+                        {item.noHp ? (
+                          <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                            <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>{item.noHp}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">-</span>
+                        )}
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-3 border-r border-slate-200 text-left">
+                      <td className="py-3 px-3 border-r border-slate-200 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           isAktif 
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
                             : 'bg-slate-100 text-slate-500 border border-slate-200'
                         }`}>
-                          {item.status}
+                          {item.status || 'Aktif'}
                         </span>
                       </td>
 
                       {/* Aksi */}
                       <td className="py-3 px-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleMove(item.id, -1)}
+                            disabled={isFiltering || idx === 0}
+                            className="p-1.5 text-slate-500 hover:text-[#0F2A4A] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={isFiltering ? 'Hapus filter/pencarian untuk mengatur urutan' : 'Naikkan urutan'}
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleMove(item.id, 1)}
+                            disabled={isFiltering || idx === filtered.length - 1}
+                            className="p-1.5 text-slate-500 hover:text-[#0F2A4A] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={isFiltering ? 'Hapus filter/pencarian untuk mengatur urutan' : 'Turunkan urutan'}
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDetailPegawai(item)}
+                            className="p-1.5 text-slate-500 hover:text-[#0F2A4A] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                            title="Lihat Detail Profil Pegawai"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleOpenEdit(item)}
-                            className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Edit Data Pegawai"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirmId(item.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Hapus Pegawai"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -419,8 +436,8 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
 
         {/* Footer info */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Menampilkan {filtered.length} dari {pegawaiList.length} total pegawai terdaftar</span>
-          <span className="font-semibold text-[#0F2A4A]">Satuan Polisi Pamong Praja Kab. Hulu Sungai Tengah</span>
+          <span>Menampilkan {filtered.length} dari {pegawaiList.length} total personel Satpol PP Kabupaten Hulu Sungai Tengah</span>
+          <span className="font-semibold text-[#0F2A4A]">Satuan Polisi Pamong Praja & Damkar Kab. Hulu Sungai Tengah</span>
         </div>
       </div>
 
@@ -429,7 +446,7 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingPegawai ? 'Edit Data Pegawai' : 'Tambah Pegawai Baru'}
-        subtitle="Kelola identitas personel, regu, dan hak akses operasional Satpol PP HST"
+        subtitle="Kelola identitas personel, pangkat/golongan, dan jabatan kedinasan Satpol PP HST"
         maxWidth="max-w-xl"
       >
         <form onSubmit={handleSave} className="space-y-4 text-xs">
@@ -439,7 +456,7 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
               type="text"
               value={nama}
               onChange={(e) => setNama(e.target.value)}
-              placeholder="Contoh: Drs. H. Subhan, M.Si"
+              placeholder="Contoh: Drs. Ahmad Fathoni"
               className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden text-sm"
               required
             />
@@ -452,71 +469,72 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
                 type="text"
                 value={nip}
                 onChange={(e) => setNip(e.target.value)}
-                placeholder="19740815 199603 1 002"
+                placeholder="19720217 199203 1 006"
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden font-mono"
                 required
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Pangkat / Golongan Ruang</label>
+              <label className="block font-semibold text-slate-700 mb-1">Jenis Kelamin</label>
               <select
-                value={pangkat}
-                onChange={(e) => setPangkat(e.target.value)}
+                value={jk}
+                onChange={(e) => setJk(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden bg-white"
               >
-                <option value="Pembina Utama Muda (IV/c)">Pembina Utama Muda (IV/c)</option>
-                <option value="Pembina Tingkat I (IV/b)">Pembina Tingkat I (IV/b)</option>
-                <option value="Pembina (IV/a)">Pembina (IV/a)</option>
-                <option value="Penata Tingkat I (III/d)">Penata Tingkat I (III/d)</option>
-                <option value="Penata (III/c)">Penata (III/c)</option>
-                <option value="Penata Muda Tingkat I (III/b)">Penata Muda Tingkat I (III/b)</option>
-                <option value="Penata Muda (III/a)">Penata Muda (III/a)</option>
-                <option value="Pengatur Tingkat I (II/d)">Pengatur Tingkat I (II/d)</option>
-                <option value="Pengatur (II/c)">Pengatur (II/c)</option>
-                <option value="Pengatur Muda Tingkat I (II/b)">Pengatur Muda Tingkat I (II/b)</option>
-                <option value="Pengatur Muda (II/a)">Pengatur Muda (II/a)</option>
-                <option value="Tenaga Honorer / Kontrak">Tenaga Honorer / Kontrak</option>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Jabatan Kedinasan *</label>
-            <input
-              type="text"
-              value={jabatan}
-              onChange={(e) => setJabatan(e.target.value)}
-              placeholder="Contoh: Petugas Lapangan Trantibum"
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden"
-              required
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Regu / Penugasan</label>
-              <select
-                value={regu}
-                onChange={(e) => setRegu(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden bg-white"
-              >
-                <option value="Regu I (Kijang 01)">Regu I (Kijang 01)</option>
-                <option value="Regu II (Kijang 02)">Regu II (Kijang 02)</option>
-                <option value="Regu Penegakan Perda">Regu Penegakan Perda</option>
-                <option value="Pimpinan & Sekretariat">Pimpinan & Sekretariat</option>
-                <option value="Regu Tindak Cepat">Regu Tindak Cepat</option>
-              </select>
+              <label className="block font-semibold text-slate-700 mb-1">Pangkat / Golongan</label>
+              <input
+                type="text"
+                value={pangkat}
+                onChange={(e) => setPangkat(e.target.value)}
+                placeholder="Pembina Utama Muda / IV / c"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden"
+              />
             </div>
-
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Hak Akses Sistem (Peran)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Status Kepegawaian</label>
               <select
-                value={peran}
-                onChange={(e) => setPeran(e.target.value)}
+                value={statusKepegawaian}
+                onChange={(e) => setStatusKepegawaian(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden bg-white font-bold"
               >
-                <option value="user">User (Petugas Lapangan)</option>
-                <option value="admin">Admin (Pimpinan / Penegakan)</option>
+                <option value="PNS">PNS (Pegawai Negeri Sipil)</option>
+                <option value="PPPK">PPPK</option>
+                <option value="Non-PNS">Non-PNS / Kontrak</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Jabatan Kedinasan *</label>
+              <input
+                type="text"
+                value={jabatan}
+                onChange={(e) => setJabatan(e.target.value)}
+                placeholder="Contoh: Kepala Satuan"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Pendidikan Terakhir</label>
+              <select
+                value={pendidikan}
+                onChange={(e) => setPendidikan(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden bg-white"
+              >
+                <option value="S-1">S-1 (Sarjana)</option>
+                <option value="S-2">S-2 (Magister)</option>
+                <option value="D-3">D-3 (Diploma)</option>
+                <option value="SMA">SMA / Sederajat</option>
               </select>
             </div>
           </div>
@@ -528,18 +546,17 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
                 type="tel"
                 value={noHp}
                 onChange={(e) => setNoHp(e.target.value)}
-                placeholder="0812xxxxxxxx"
+                placeholder="0821xxxxxxxx"
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden"
               />
             </div>
-
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Email Kedinasan</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nama@hulusungaitengahkab.go.id"
+                placeholder="nama@satpolpp.hulusungaitengahkab.go.id"
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden"
               />
             </div>
@@ -575,6 +592,73 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
         </form>
       </Modal>
 
+      {/* MODAL DETAIL PEGAWAI */}
+      {detailPegawai && (
+        <Modal
+          isOpen={Boolean(detailPegawai)}
+          onClose={() => setDetailPegawai(null)}
+          title="Detail Biodata Pegawai Satpol PP"
+          subtitle="Lembar data aparatur Satpol PP & Damkar Kab. Hulu Sungai Tengah"
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-[#0F2A4A] text-white flex items-center justify-center font-bold text-lg">
+                {detailPegawai.nama.charAt(0)}
+              </div>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-sm">{detailPegawai.nama}</h4>
+                <p className="text-slate-500 font-mono text-[11px]">{detailPegawai.nip}</p>
+                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 mt-1">
+                  {detailPegawai.statusKepegawaian || 'PNS'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-white rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Pangkat / Golongan</span>
+                <span className="font-bold text-slate-800 mt-0.5 block">{detailPegawai.pangkat || '-'}</span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Jenis Kelamin</span>
+                <span className="font-bold text-slate-800 mt-0.5 block">{detailPegawai.jk || 'Laki-laki'}</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-white rounded-xl border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase">Jabatan Kedinasan</span>
+              <span className="font-bold text-slate-900 text-sm mt-0.5 block">{detailPegawai.jabatan}</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-white rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Pendidikan Terakhir</span>
+                <span className="font-bold text-slate-800 mt-0.5 block">{detailPegawai.pendidikan || 'S-1'}</span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">No. WhatsApp / HP</span>
+                <span className="font-bold text-slate-800 mt-0.5 block">{detailPegawai.noHp || '-'}</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-white rounded-xl border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase">Wilayah Penugasan</span>
+              <span className="font-bold text-slate-800 mt-0.5 block">{detailPegawai.wilayahTugas || 'Kabupaten Hulu Sungai Tengah'}</span>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setDetailPegawai(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* MODAL KONFIRMASI HAPUS */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -584,7 +668,7 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
               <h4 className="font-bold text-slate-900 text-base">Hapus Data Pegawai?</h4>
             </div>
             <p className="text-xs text-slate-600">
-              Apakah Anda yakin ingin menghapus personel ini dari daftar master pegawai Satpol PP HST? Tindakan ini tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus personel ini dari master data kepegawaian Satpol PP HST? Tindakan ini akan menghapus data di database.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
@@ -606,4 +690,3 @@ export default function MasterPegawai({ pegawaiList, onRefreshData }) {
     </div>
   );
 }
-

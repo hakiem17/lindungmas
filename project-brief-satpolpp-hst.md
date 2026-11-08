@@ -1,6 +1,6 @@
-# Project Brief: GARDA MURAKATA — Sistem Penegakan Perda & Trantibum Satpol PP Kabupaten Hulu Sungai Tengah
+# Project Brief: LINDUNGMAS HST — Layanan Informasi dan Data Perlindungan Masyarakat Kab. Hulu Sungai Tengah
 
-Dokumen ini adalah spesifikasi dan panduan acuan utama sistem **GARDA MURAKATA** (*Sistem Informasi Penegakan Peraturan Daerah, Peraturan Kepala Daerah, dan Ketenteraman Ketertiban Umum*) untuk Satuan Polisi Pamong Praja (Satpol PP) Kabupaten Hulu Sungai Tengah, Kalimantan Selatan.
+Dokumen ini adalah spesifikasi dan panduan acuan utama sistem **LINDUNGMAS HST** (*Layanan Informasi dan Data Perlindungan Masyarakat Kabupaten Hulu Sungai Tengah*) yang mengintegrasikan penegakan Peraturan Daerah, Trantibum, dan Perlindungan Masyarakat (Linmas) untuk Satuan Polisi Pamong Praja (Satpol PP) Kabupaten Hulu Sungai Tengah, Kalimantan Selatan.
 
 ---
 

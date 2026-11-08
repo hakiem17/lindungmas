@@ -1,7 +1,7 @@
-# GARDA MURAKATA — Sistem Informasi Penegakan Perda & Trantibum
-### Satuan Polisi Pamong Praja Kabupaten Hulu Sungai Tengah
+# LINDUNGMAS HST — Layanan Informasi dan Data Perlindungan Masyarakat
+### Satuan Polisi Pamong Praja & Damkar Kabupaten Hulu Sungai Tengah
 
-**GARDA MURAKATA** adalah platform sistem informasi operasional dan pelayanan publik terpadu milik **Satpol PP Kabupaten Hulu Sungai Tengah, Kalimantan Selatan**. Aplikasi ini dirancang modern berbasis web responsif, kecerdasan pemindai OCR e-KTP, pemetaan spasial GIS bergradasi, perekaman aktivitas patroli berkoordinat, gatekeeping sanksi berjenjang, dan pelacak tiket aduan masyarakat berbasis QR Code mandiri.
+**LINDUNGMAS HST** (*Layanan Informasi dan Data Perlindungan Masyarakat Kabupaten Hulu Sungai Tengah*) adalah platform sistem informasi operasional, perlindungan masyarakat (Linmas), penegakan Perda/Trantibum, dan pelayanan pengaduan publik terpadu di **Kabupaten Hulu Sungai Tengah, Kalimantan Selatan**. Aplikasi ini dirancang modern berbasis web responsif, kecerdasan pemindai OCR e-KTP, pemetaan spasial GIS bergradasi, perekaman aktivitas patroli berkoordinat, gatekeeping sanksi berjenjang, dan pelacak tiket aduan masyarakat berbasis QR Code mandiri.
 
 ---
 

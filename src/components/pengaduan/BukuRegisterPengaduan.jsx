@@ -38,7 +38,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import Modal from '../common/Modal';
-import ModalMapPicker from './ModalMapPicker';
+import ModalMapPicker from '../common/ModalMapPicker';
 import { 
   saveRekapTrantibumItem, 
   deleteRekapTrantibumItem, 

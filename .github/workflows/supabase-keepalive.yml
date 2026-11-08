@@ -1,0 +1,29 @@
+name: Supabase Free Tier Keep-Alive
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 2 hari sekali pada pukul 04:00 UTC (12:00 WITA)
+    # Supabase gratis menjeda project jika tidak ada aktivitas selama 7 hari.
+    # Frekuensi 2 hari sekali menjamin project SELALU aktif 100%.
+    - cron: '0 4 */2 * *'
+  workflow_dispatch: # Memungkinkan tombol manual "Run workflow" di GitHub Actions
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Execute Supabase Keep-Alive Ping
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://hgbtaojwqstxwolvhukp.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_BPCKAgdRcLnPswESdqDB7w_0-ZhCx2H' }}
+        run: |
+          npm run keep-alive
+

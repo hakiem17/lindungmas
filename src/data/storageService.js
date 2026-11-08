@@ -1,6 +1,7 @@
 // ==============================================================================
-// STORAGE SERVICE (OFFLINE-FIRST LOCAL STORAGE & MOCK SUPABASE ADAPTER)
+// STORAGE SERVICE (LIVE SUPABASE DATABASE ADAPTER & PERSISTENCE LAYER)
 // ==============================================================================
+import { supabase, isSupabaseConfigured } from './supabaseClient.js';
 import {
   INITIAL_PELANGGAR,
   INITIAL_PELANGGARAN,
@@ -9,6 +10,10 @@ import {
   INITIAL_REKAP_TRANTIBUM,
   INITIAL_PEGAWAI,
   INITIAL_PELAPOR,
+  INITIAL_SATLINMAS,
+  INITIAL_POSKAMLING,
+  INITIAL_KEGIATAN_PATROLI,
+  DEFAULT_MASTER_FASILITAS_POSKAMLING,
   PERDA_HST,
   KECAMATAN_HST
 } from './mockData.js';
@@ -23,9 +28,438 @@ const STORAGE_KEYS = {
   WILAYAH: 'siperda_hst_wilayah',
   PERDA: 'siperda_hst_perda',
   PELAPOR: 'siperda_hst_pelapor',
+  SATLINMAS: 'lindungmas_hst_satlinmas',
+  POSKAMLING: 'lindungmas_hst_poskamling',
+  KEGIATAN_PATROLI: 'lindungmas_hst_kegiatan_patroli',
+  FASILITAS_POSKAMLING: 'lindungmas_hst_fasilitas_poskamling',
+  AUDIT_LOGS: 'lindungmas_hst_audit_logs',
+  PROFIL_PENGGUNA: 'lindungmas_hst_profil_pengguna',
   ACTIVE_ROLE: 'siperda_hst_active_role',
   OFFLINE_QUEUE: 'siperda_hst_offline_queue',
   AUTH_SESSION: 'siperda_hst_auth_session'
+};
+
+const safeSetItem = (key, val) => {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(key, val);
+    } catch (e) {}
+  }
+};
+
+const safeGetItem = (key) => {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+};
+
+// ==============================================================================
+// MAPPER DARI DATABASE SUPABASE (SNAKE_CASE) KE MODEL FRONTEND (CAMELCASE)
+// ==============================================================================
+
+export const mapSatlinmasFromDB = (row) => ({
+  id: row.id,
+  noRegistrasi: row.no_registrasi || '',
+  nama: row.nama,
+  nik: row.nik,
+  tempatLahir: row.tempat_lahir || '',
+  tanggalLahir: row.tanggal_lahir || '',
+  jenisKelamin: row.jenis_kelamin || '',
+  alamat: row.alamat || '',
+  provinsi: row.provinsi || 'Kalimantan Selatan',
+  kabKota: row.kab_kota || 'Kabupaten Hulu Sungai Tengah',
+  kecamatan: row.kecamatan || '',
+  desaKelurahan: row.desa_kelurahan || '',
+  pendapatan: row.pendapatan || '',
+  tahunPengangkatan: row.tahun_pengangkatan || '',
+  jumlahKeluarga: row.jumlah_keluarga || '',
+  noHp: row.no_hp || '',
+  email: row.email || '',
+  status: row.status || 'aktif',
+  jabatan: row.jabatan || '',
+  keterangan: row.keterangan || '',
+  urutan: row.urutan ?? null,
+  pasFoto: row.pas_foto_url || '',
+  dokumenSk: {
+    nomorSk: row.nomor_sk || '',
+    tanggalPenetapanSk: row.tanggal_sk || '',
+    fileSk: row.file_sk_url || ''
+  },
+  qrKtaCode: row.qr_kta_code || null,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+export const mapPoskamlingFromDB = (row) => ({
+  id: row.id,
+  namaPoskamling: row.nama_poskamling,
+  namaPos: row.nama_poskamling,
+  kecamatan: row.kecamatan,
+  desaKelurahan: row.desa_kelurahan,
+  desa: row.desa_kelurahan,
+  alamatLengkap: row.alamat_lengkap,
+  alamat: row.alamat_lengkap,
+  rt: row.rt || '',
+  rw: row.rw || '',
+  lat: Number(row.lat) || -2.5855,
+  lng: Number(row.lng) || 115.3815,
+  kondisiFisik: row.kondisi_fisik || '',
+  kondisi: row.kondisi_fisik || '',
+  statusOperasional: row.status_operasional || 'Aktif Terjadwal (Tiap Malam)',
+  status: row.status_operasional || 'Aktif Terjadwal (Tiap Malam)',
+  fasilitas: Array.isArray(row.fasilitas) ? row.fasilitas : [],
+  fasilitasTerdata: Array.isArray(row.fasilitas) ? row.fasilitas : [],
+  sarana: Array.isArray(row.fasilitas) ? row.fasilitas : [],
+  namaKetuaPos: row.nama_ketua_pos || '',
+  kontakWa: row.kontak_wa || '',
+  kontakKoordinator: row.kontak_wa || '',
+  personelRonda: Number(row.personel_ronda) || 0,
+  catatanTambahan: row.catatan_tambahan || '',
+  catatan: row.catatan_tambahan || '',
+  tanggalPendataan: row.tanggal_pendataan || '',
+  satlinmasDesa: row.satlinmas_desa ?? null,
+  urutan: row.urutan ?? null,
+  foto: row.foto_pos_url || '',
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+export const mapKegiatanPatroliFromDB = (row) => ({
+  id: row.id,
+  kode: row.kode,
+  judulPatroli: row.judul_patroli,
+  judulKegiatan: row.judul_patroli,
+  jenisKegiatan: row.jenis_kegiatan,
+  statusSituasi: row.status_situasi,
+  kecamatan: row.kecamatan,
+  desaKelurahan: row.desa_kelurahan,
+  desa: row.desa_kelurahan,
+  lokasiSpesifik: row.lokasi_spesifik,
+  petugasPelapor: row.petugas_pelapor,
+  namaPelapor: row.petugas_pelapor,
+  nikPelapor: row.nik_pelapor,
+  jumlahPersonel: Number(row.jumlah_personel) || 4,
+  lat: Number(row.lat) || -2.5833,
+  lng: Number(row.lng) || 115.3811,
+  hasilPatroli: row.hasil_patroli || '',
+  uraianKegiatan: row.hasil_patroli || '',
+  tindakanDiambil: row.tindakan_diambil || '',
+  fotoDokumentasi: Array.isArray(row.foto_dokumentasi) ? row.foto_dokumentasi : (row.foto_dokumentasi ? [row.foto_dokumentasi] : []),
+  waktuLapor: row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '',
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+// Master Pegawai (tabel master_pegawai) -> model frontend
+export const mapPegawaiFromDB = (row) => ({
+  id: row.id,
+  nama: row.nama,
+  nip: row.nip,
+  jk: row.jenis_kelamin || '',
+  pangkat: row.pangkat_golongan || '',
+  jabatan: row.jabatan || '',
+  statusKepegawaian: row.status_kepegawaian || '',
+  pendidikan: row.pendidikan || '',
+  noHp: row.no_telepon || '',
+  keterangan: row.keterangan || '',
+  wilayah: row.wilayah || 'hst',
+  urutan: row.urutan ?? null,
+  status: row.status || 'Aktif',
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+// Profil Pengguna (tabel profil_pengguna) -> model frontend
+export const mapProfilFromDB = (row) => ({
+  id: row.id,
+  nama: row.nama,
+  nip: row.nip,
+  nik: row.nik || null,
+  noRegistrasi: row.no_registrasi || null,
+  pangkat: row.pangkat || '',
+  jabatan: row.jabatan || '',
+  regu: row.regu || '-',
+  peran: row.peran,
+  wilayahTugas: row.wilayah_tugas,
+  desaTugas: row.desa_tugas || null,
+  noHp: row.no_hp || '',
+  email: row.email || '',
+  foto: row.foto_url || null,
+  status: row.status || 'Aktif',
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+export const mapFasilitasFromDB = (row) => ({
+  id: row.id,
+  namaFasilitas: row.nama_fasilitas,
+  kategori: row.kategori,
+  deskripsi: row.deskripsi || '',
+  standarMinimal: row.standar_minimal || '1 Unit',
+  statusWajib: row.standar_minimal ? 'Wajib' : 'Standar',
+  aktif: row.aktif !== false,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+export const buildWilayahFromDB = (rows) => {
+  if (!rows || rows.length === 0) return KECAMATAN_HST;
+  
+  // Group rows by kecamatan
+  const grouped = new Map();
+  rows.forEach(r => {
+    if (!grouped.has(r.kecamatan)) {
+      grouped.set(r.kecamatan, {
+        id: `kec-${r.kecamatan.toLowerCase().replace(/\s+/g, '-')}`,
+        nama: r.kecamatan,
+        pusat: r.pusat_pemerintahan || r.desa_kelurahan,
+        lat: Number(r.lat) || -2.5833,
+        lng: Number(r.lng) || 115.3811,
+        kodePos: r.kode_pos || '71311',
+        tipe: r.tipe_wilayah || 'Kecamatan',
+        desa: []
+      });
+    }
+    const item = grouped.get(r.kecamatan);
+    if (r.desa_kelurahan && !item.desa.includes(r.desa_kelurahan)) {
+      item.desa.push(r.desa_kelurahan);
+    }
+  });
+
+  // Merge with existing KECAMATAN_HST villages to retain comprehensive lists
+  const result = Array.from(grouped.values()).map(kec => {
+    const defaultKec = KECAMATAN_HST.find(k => k.nama.toLowerCase() === kec.nama.toLowerCase());
+    if (defaultKec) {
+      const mergedDesa = Array.from(new Set([...kec.desa, ...defaultKec.desa]));
+      return {
+        ...defaultKec,
+        ...kec,
+        desa: mergedDesa
+      };
+    }
+    return kec;
+  });
+
+  return result.length > 0 ? result : KECAMATAN_HST;
+};
+
+// ==============================================================================
+// FETCH ALL DATA DIRECTLY FROM SUPABASE DATABASE
+// ==============================================================================
+export const fetchDatabaseData = async () => {
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase belum terkonfigurasi, menggunakan data lokal.');
+    return null;
+  }
+
+  try {
+    const [
+      resSatlinmas,
+      resPoskamling,
+      resPatroli,
+      resProfil,
+      resPegawai,
+      resFasilitas,
+      resWilayah,
+      resAudit
+    ] = await Promise.all([
+      supabase.from('satlinmas').select('*').order('urutan', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }),
+      supabase.from('poskamling').select('*').order('urutan', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }),
+      supabase.from('kegiatan_patroli').select('*').order('created_at', { ascending: false }),
+      supabase.from('profil_pengguna').select('*').order('created_at', { ascending: true }),
+      supabase.from('master_pegawai').select('*').order('urutan', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true }),
+      supabase.from('master_fasilitas_poskamling').select('*').order('created_at', { ascending: true }),
+      supabase.from('master_wilayah').select('*'),
+      supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(50)
+    ]);
+
+    if (resSatlinmas.error) {
+      const retry = await supabase.from('satlinmas').select('*').order('created_at', { ascending: false });
+      resSatlinmas.data = retry.data;
+      resSatlinmas.error = retry.error;
+    }
+    const mappedSatlinmas = (resSatlinmas.data || []).map(mapSatlinmasFromDB);
+    if (resPoskamling.error) {
+      const retry = await supabase.from('poskamling').select('*').order('created_at', { ascending: false });
+      resPoskamling.data = retry.data;
+      resPoskamling.error = retry.error;
+    }
+    const mappedPoskamling = (resPoskamling.data || []).map(mapPoskamlingFromDB);
+    const mappedPatroli = (resPatroli.data || []).map(mapKegiatanPatroliFromDB);
+    // Jika kolom `urutan` belum dibuat di database, ambil tanpa pengurutan tsb
+    if (resPegawai.error) {
+      const retry = await supabase.from('master_pegawai').select('*').order('created_at', { ascending: true });
+      resPegawai.data = retry.data;
+      resPegawai.error = retry.error;
+    }
+    const mappedPegawai = (resPegawai.data || []).map(mapPegawaiFromDB);
+    const mappedProfil = (resProfil.data || []).map(mapProfilFromDB);
+    const mappedFasilitas = (resFasilitas.data || []).map(mapFasilitasFromDB);
+    const mappedWilayah = (resWilayah.data || []).length > 0 ? buildWilayahFromDB(resWilayah.data) : KECAMATAN_HST;
+
+    // Overwrite local cache with live database records
+    if (!resSatlinmas.error && resSatlinmas.data) safeSetItem(STORAGE_KEYS.SATLINMAS, JSON.stringify(mappedSatlinmas));
+    if (!resPoskamling.error && resPoskamling.data) safeSetItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(mappedPoskamling));
+    if (!resPatroli.error && resPatroli.data) safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(mappedPatroli));
+    if (!resPegawai.error && resPegawai.data) {
+      safeSetItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(mappedPegawai));
+    }
+    if (!resProfil.error && resProfil.data) {
+      safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(mappedProfil));
+    }
+    if (!resFasilitas.error && resFasilitas.data) safeSetItem(STORAGE_KEYS.FASILITAS_POSKAMLING, JSON.stringify(mappedFasilitas));
+    if (!resWilayah.error && resWilayah.data) safeSetItem(STORAGE_KEYS.WILAYAH, JSON.stringify(mappedWilayah));
+
+    let mappedAudit = [];
+    if (resAudit.data && resAudit.data.length > 0) {
+      mappedAudit = resAudit.data.map(log => ({
+        id: log.id,
+        timestamp: log.timestamp || log.created_at,
+        waktu: log.timestamp ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA' : '',
+        aktor: log.aktor_nama || 'Sistem',
+        nipAktor: log.aktor_nip || '-',
+        peran: log.aktor_peran || 'Admin',
+        aksi: log.aksi,
+        modul: log.modul,
+        target: log.target || '-',
+        detail: log.detail || ''
+      }));
+      safeSetItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(mappedAudit));
+    }
+
+    return {
+      satlinmas: mappedSatlinmas,
+      poskamling: mappedPoskamling,
+      kegiatanPatroli: mappedPatroli,
+      pegawai: mappedPegawai,
+      profilPengguna: mappedProfil,
+      fasilitasPoskamling: mappedFasilitas,
+      wilayah: mappedWilayah,
+      auditLogs: mappedAudit,
+      isLive: true
+    };
+  } catch (err) {
+    console.error('⚠️ Gagal mengambil data live dari Supabase:', err);
+    return null;
+  }
+};
+
+/**
+ * Paksa pembersihan cache lokal dan ambil data riil langsung dari database Supabase
+ */
+export const forceDatabaseSync = async () => {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.PEGAWAI);
+      localStorage.removeItem(STORAGE_KEYS.PROFIL_PENGGUNA);
+      localStorage.removeItem(STORAGE_KEYS.SATLINMAS);
+      localStorage.removeItem(STORAGE_KEYS.POSKAMLING);
+      localStorage.removeItem(STORAGE_KEYS.KEGIATAN_PATROLI);
+      localStorage.removeItem(STORAGE_KEYS.FASILITAS_POSKAMLING);
+    } catch (e) {}
+  }
+  return await fetchDatabaseData();
+};
+
+// ==============================================================================
+// REALTIME SUBSCRIPTION LISTENER
+// ==============================================================================
+export const subscribeToLiveDatabase = (onUpdateCallback) => {
+  if (!isSupabaseConfigured() || typeof window === 'undefined') return () => {};
+
+  const channel = supabase
+    .channel('lindungmas_live_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'satlinmas' }, () => onUpdateCallback && onUpdateCallback('satlinmas'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'poskamling' }, () => onUpdateCallback && onUpdateCallback('poskamling'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'kegiatan_patroli' }, () => onUpdateCallback && onUpdateCallback('kegiatan_patroli'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'master_fasilitas_poskamling' }, () => onUpdateCallback && onUpdateCallback('master_fasilitas_poskamling'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profil_pengguna' }, () => onUpdateCallback && onUpdateCallback('profil_pengguna'))
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+export const getAuditLogs = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
+    if (!raw) {
+      const defaultLogs = [
+        {
+          id: 'log-001',
+          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+          waktu: '2 jam yang lalu',
+          aktor: 'Drs. H. Subhan, M.Si',
+          nipAktor: '19740815 199603 1 002',
+          peran: 'Admin Satpol PP Kabupaten',
+          aksi: 'TAMBAH',
+          modul: 'Master Sarana Poskamling',
+          target: 'Standarisasi Perlengkapan Poskamling HST',
+          detail: 'Standarisasi master data perlengkapan keamanan pos ronda RT/RW se-Kabupaten HST.'
+        },
+        {
+          id: 'log-002',
+          timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+          waktu: '5 jam yang lalu',
+          aktor: 'M. Rizky Pratama, S.H.',
+          nipAktor: '19850614 201001 1 012',
+          peran: 'Operator Kecamatan Barabai',
+          aksi: 'VERIFIKASI',
+          modul: 'Data Satlinmas',
+          target: 'Anggota Satlinmas Barabai Timur',
+          detail: 'Verifikasi berkas SK & 17 urutan kolom baku anggota Satlinmas Barabai.'
+        },
+        {
+          id: 'log-003',
+          timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
+          waktu: '12 jam yang lalu',
+          aktor: 'Muhammad Arsyad',
+          nipAktor: 'SLM-BRB-001',
+          peran: 'Anggota Linmas',
+          aksi: 'INPUT',
+          modul: 'Kegiatan dan Patroli',
+          target: 'Patroli Siskamling RT 04 Barabai Timur',
+          detail: 'Input laporan patroli malam mandiri dengan geotagging GPS dan dokumentasi foto.'
+        }
+      ];
+      localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(defaultLogs));
+      return defaultLogs;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    return [];
+  }
+};
+
+export const addAuditLog = ({ aksi, modul, target, detail, aktor, peran, nipAktor }) => {
+  try {
+    const logs = getAuditLogs();
+    const session = getAuthSession();
+    const newLog = {
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      waktu: 'Baru saja',
+      aktor: aktor || session?.nama || 'Petugas Sistem',
+      nipAktor: nipAktor || session?.nip || session?.noRegistrasi || '-',
+      peran: peran || session?.peran || 'Admin Satpol PP Kabupaten',
+      aksi: (aksi || 'AKSI').toUpperCase(),
+      modul: modul || 'Sistem',
+      target: target || '-',
+      detail: detail || '-'
+    };
+    logs.unshift(newLog);
+    const trimmed = logs.slice(0, 150);
+    localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(trimmed));
+    return newLog;
+  } catch (e) {
+    console.error('Failed to save audit log', e);
+  }
 };
 
 export const getAuthSession = () => {
@@ -47,10 +481,23 @@ export const saveAuthSession = (user) => {
 };
 
 export const clearAuthSession = () => {
-  localStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
+  }
 };
 
 export const initStorage = () => {
+  if (typeof localStorage === 'undefined') return;
+
+  // Jika Supabase terkonfigurasi, data utama bersumber riil dari database Supabase
+  if (isSupabaseConfigured()) {
+    if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_ROLE)) {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_ROLE, 'admin_kabupaten');
+    }
+    return;
+  }
+
+  // Fallback offline jika database tidak terhubung
   if (!localStorage.getItem(STORAGE_KEYS.PELANGGAR)) {
     localStorage.setItem(STORAGE_KEYS.PELANGGAR, JSON.stringify(INITIAL_PELANGGAR));
   }
@@ -77,6 +524,18 @@ export const initStorage = () => {
   }
   if (!localStorage.getItem(STORAGE_KEYS.PELAPOR)) {
     localStorage.setItem(STORAGE_KEYS.PELAPOR, JSON.stringify(INITIAL_PELAPOR));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.SATLINMAS)) {
+    localStorage.setItem(STORAGE_KEYS.SATLINMAS, JSON.stringify(INITIAL_SATLINMAS));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.POSKAMLING)) {
+    localStorage.setItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(INITIAL_POSKAMLING));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.KEGIATAN_PATROLI)) {
+    localStorage.setItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(INITIAL_KEGIATAN_PATROLI));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.FASILITAS_POSKAMLING)) {
+    localStorage.setItem(STORAGE_KEYS.FASILITAS_POSKAMLING, JSON.stringify(DEFAULT_MASTER_FASILITAS_POSKAMLING));
   }
   if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_ROLE)) {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ROLE, 'user');
@@ -651,48 +1110,255 @@ export const deleteRekapTrantibumItem = (id) => {
 };
 
 // ==============================================================================
-// MASTER PEGAWAI OPERATIONS
+// MASTER PEGAWAI OPERATIONS (tabel master_pegawai)
 // ==============================================================================
 export const getPegawaiList = () => {
   initStorage();
   try {
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEYS.PEGAWAI) || '[]');
-    return data.length > 0 ? data : INITIAL_PEGAWAI;
-  } catch (e) {
-    return INITIAL_PEGAWAI;
-  }
+    const raw = safeGetItem(STORAGE_KEYS.PEGAWAI);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {}
+  return isSupabaseConfigured() ? [] : INITIAL_PEGAWAI;
 };
+
+const toMasterPayload = (p) => ({
+  nama: p.nama,
+  nip: p.nip,
+  jenis_kelamin: p.jk || null,
+  pangkat_golongan: p.pangkat || null,
+  jabatan: p.jabatan || null,
+  status_kepegawaian: p.statusKepegawaian || null,
+  pendidikan: p.pendidikan || null,
+  no_telepon: p.noHp || null,
+  keterangan: p.keterangan || null,
+  status: p.status || 'Aktif',
+  ...(p.urutan != null ? { urutan: p.urutan } : {})
+});
+
+const isUuid = (id) => typeof id === 'string' && id.includes('-') && id.length > 20;
 
 export const savePegawai = (pegawaiData) => {
   const list = getPegawaiList();
-  if (pegawaiData.id) {
-    // Update existing
-    const idx = list.findIndex(p => p.id === pegawaiData.id);
-    if (idx >= 0) {
-      list[idx] = { ...list[idx], ...pegawaiData, updatedAt: new Date().toISOString() };
-      localStorage.setItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(list));
-      return list[idx];
+  let result;
+  const idx = pegawaiData.id ? list.findIndex(p => p.id === pegawaiData.id) : -1;
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...pegawaiData, updatedAt: new Date().toISOString() };
+    result = list[idx];
+  } else {
+    const maxUrutan = list.reduce((m, x) => Math.max(m, x.urutan || 0), 0);
+    result = { id: `peg-${Date.now()}`, status: 'Aktif', urutan: maxUrutan + 1, ...pegawaiData, createdAt: new Date().toISOString() };
+    list.push(result);
+  }
+  safeSetItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(list));
+
+  if (isSupabaseConfigured()) {
+    const payload = toMasterPayload(result);
+    if (idx >= 0 && isUuid(result.id)) {
+      supabase.from('master_pegawai').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', result.id).then();
+    } else {
+      supabase.from('master_pegawai').upsert([payload], { onConflict: 'nip' }).then();
     }
   }
+  return result;
+};
 
-  // Create new
-  const newPegawai = {
-    id: `peg-${Date.now().toString().slice(-6)}`,
-    status: 'Aktif',
-    foto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    ...pegawaiData,
-    createdAt: new Date().toISOString()
-  };
-  list.unshift(newPegawai);
-  localStorage.setItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(list));
-  return newPegawai;
+// Geser posisi pegawai ke atas/bawah (direction: -1 = naik, 1 = turun) lalu simpan urutan ke database
+export const movePegawai = async (id, direction) => {
+  const list = [...getPegawaiList()].sort((a, b) => (a.urutan ?? 1e9) - (b.urutan ?? 1e9));
+  const i = list.findIndex(p => p.id === id);
+  const j = i + direction;
+  if (i < 0 || j < 0 || j >= list.length) return list;
+  [list[i], list[j]] = [list[j], list[i]];
+  const changed = [];
+  list.forEach((p, idx) => {
+    if (p.urutan !== idx + 1) { p.urutan = idx + 1; changed.push(p); }
+  });
+  safeSetItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(list));
+  if (isSupabaseConfigured()) {
+    await Promise.all(changed.filter(p => isUuid(p.id)).map(p =>
+      supabase.from('master_pegawai').update({ urutan: p.urutan }).eq('id', p.id)
+    ));
+  }
+  return list;
 };
 
 export const deletePegawai = (id) => {
   let list = getPegawaiList();
+  const target = list.find(p => p.id === id);
   list = list.filter(p => p.id !== id);
-  localStorage.setItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(list));
+  safeSetItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(list));
+
+  if (isSupabaseConfigured() && target) {
+    if (isUuid(id)) {
+      supabase.from('master_pegawai').delete().eq('id', id).then();
+    } else if (target.nip) {
+      supabase.from('master_pegawai').delete().eq('nip', target.nip).then();
+    }
+  }
   return list;
+};
+
+// ==============================================================================
+// PROFIL PENGGUNA & MANAJEMEN AKUN SISTEM (TERPISAH DARI MASTER PEGAWAI)
+// ==============================================================================
+export const getProfilPenggunaList = () => {
+  initStorage();
+  try {
+    const raw = safeGetItem(STORAGE_KEYS.PROFIL_PENGGUNA);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (e) {}
+  return [];
+};
+
+export const saveProfilPengguna = (userData) => {
+  const list = getProfilPenggunaList();
+
+  if (userData.id) {
+    const idx = list.findIndex(u => u.id === userData.id || (userData.nip && u.nip === userData.nip));
+    if (idx >= 0) {
+      list[idx] = {
+        ...list[idx],
+        ...userData,
+        updatedAt: new Date().toISOString()
+      };
+      safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
+
+      addAuditLog({
+        aksi: 'UBAH',
+        modul: 'Profil Pengguna',
+        target: `${list[idx].nama} (${list[idx].peran})`,
+        detail: `Pembaruan akun & hak akses profil pengguna ${list[idx].nama} (${list[idx].peran}).`
+      });
+
+      // Sinkronkan ke Supabase Live Database
+      if (isSupabaseConfigured()) {
+        const payload = {
+          nama: list[idx].nama,
+          nip: list[idx].nip,
+          nik: list[idx].nik || null,
+          no_registrasi: list[idx].noRegistrasi || null,
+          pangkat: list[idx].pangkat,
+          jabatan: list[idx].jabatan,
+          regu: list[idx].regu || null,
+          peran: list[idx].peran || 'admin_kabupaten',
+          wilayah_tugas: list[idx].wilayahTugas || 'Seluruh Kabupaten Hulu Sungai Tengah',
+          desa_tugas: list[idx].desaTugas || null,
+          no_hp: list[idx].noHp || '',
+          email: list[idx].email,
+          foto_url: list[idx].foto || null,
+          status: list[idx].status || 'Aktif'
+        };
+        if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
+          supabase.from('profil_pengguna').update(payload).eq('id', list[idx].id).then();
+        } else {
+          supabase.from('profil_pengguna').upsert([payload], { onConflict: 'nip' }).then();
+        }
+      }
+
+      return list[idx];
+    }
+  }
+
+  // Create new user profile / account
+  const newUser = {
+    id: `usr-${Date.now().toString().slice(-6)}`,
+    nama: userData.nama || '',
+    nip: userData.nip || userData.username || `USR-${Date.now().toString().slice(-4)}`,
+    nik: userData.nik || null,
+    noRegistrasi: userData.noRegistrasi || null,
+    pangkat: userData.pangkat || 'Pengatur (II/c)',
+    jabatan: userData.jabatan || 'Operator Sistem LINDUNGMAS',
+    regu: userData.regu || '-',
+    peran: userData.peran || 'operator_kecamatan',
+    wilayahTugas: userData.wilayahTugas || 'Barabai',
+    desaTugas: userData.desaTugas || null,
+    noHp: userData.noHp || '',
+    email: userData.email || `${(userData.nip || 'user').replace(/\s+/g, '')}@satpolpp.hstkab.go.id`,
+    foto: userData.foto || null,
+    status: userData.status || 'Aktif',
+    keterangan: userData.keterangan || null,
+    createdAt: new Date().toISOString()
+  };
+
+  list.unshift(newUser);
+  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
+
+  addAuditLog({
+    aksi: 'TAMBAH',
+    modul: 'Profil Pengguna',
+    target: `${newUser.nama} (${newUser.peran})`,
+    detail: `Pembuatan akun pengguna baru ${newUser.nama} peran ${newUser.peran} wilayah ${newUser.wilayahTugas}.`
+  });
+
+  // Sinkronkan ke Supabase Live Database
+  if (isSupabaseConfigured()) {
+    const payload = {
+      nama: newUser.nama,
+      nip: newUser.nip,
+      nik: newUser.nik || null,
+      no_registrasi: newUser.noRegistrasi || null,
+      pangkat: newUser.pangkat,
+      jabatan: newUser.jabatan,
+      regu: newUser.regu || null,
+      peran: newUser.peran,
+      wilayah_tugas: newUser.wilayahTugas,
+      desa_tugas: newUser.desaTugas || null,
+      no_hp: newUser.noHp || '',
+      email: newUser.email,
+      foto_url: newUser.foto || null,
+      status: newUser.status || 'Aktif'
+    };
+    supabase.from('profil_pengguna').upsert([payload], { onConflict: 'nip' }).then();
+  }
+
+  return newUser;
+};
+
+export const deleteProfilPengguna = (id) => {
+  let list = getProfilPenggunaList();
+  const target = list.find(u => u.id === id);
+  list = list.filter(u => u.id !== id);
+  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
+
+  if (target) {
+    addAuditLog({
+      aksi: 'HAPUS',
+      modul: 'Profil Pengguna',
+      target: `${target.nama} (${target.peran})`,
+      detail: `Penghapusan akun profil pengguna ${target.nama}.`
+    });
+
+    if (isSupabaseConfigured()) {
+      if (id.includes('-') && id.length > 20) {
+        supabase.from('profil_pengguna').delete().eq('id', id).then();
+      } else if (target.nip) {
+        supabase.from('profil_pengguna').delete().eq('nip', target.nip).then();
+      }
+    }
+  }
+
+  return list;
+};
+
+export const updateCurrentUserProfile = (updatedFields) => {
+  const session = getAuthSession();
+  if (!session) return null;
+
+  const updatedUser = {
+    ...session,
+    ...updatedFields,
+    updatedAt: new Date().toISOString()
+  };
+
+  saveAuthSession(updatedUser);
+  saveProfilPengguna(updatedUser);
+  return updatedUser;
 };
 
 // ==============================================================================
@@ -880,6 +1546,650 @@ export const deletePelapor = (id) => {
   localStorage.setItem(STORAGE_KEYS.PELAPOR, JSON.stringify(list));
   return list;
 };
+
+// ==============================================================================
+// MASTER DATA & SEED DATA SATLINMAS (17 URUTAN KOLOM BAKU + BERKAS SK)
+// ==============================================================================
+export const getSatlinmasList = () => {
+  initStorage();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SATLINMAS);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) return data;
+    }
+    return isSupabaseConfigured() ? [] : INITIAL_SATLINMAS;
+  } catch (e) {
+    return isSupabaseConfigured() ? [] : INITIAL_SATLINMAS;
+  }
+};
+
+export const saveSatlinmas = (satlinmasData) => {
+  const list = getSatlinmasList();
+
+  if (satlinmasData.id) {
+    // Update existing
+    const idx = list.findIndex(s => s.id === satlinmasData.id);
+    if (idx >= 0) {
+      list[idx] = {
+        ...list[idx],
+        ...satlinmasData,
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.SATLINMAS, JSON.stringify(list));
+      addAuditLog({
+        aksi: 'UBAH',
+        modul: 'Data Satlinmas',
+        target: `${list[idx].nama} (${list[idx].noRegistrasi})`,
+        detail: `Pembaruan data anggota Satlinmas Kec. ${list[idx].kecamatan}, Desa ${list[idx].desaKelurahan}.`
+      });
+
+      // Sinkronkan ke Supabase Live Database
+      if (isSupabaseConfigured()) {
+        const payload = {
+          no_registrasi: list[idx].noRegistrasi || null,
+          jabatan: list[idx].jabatan || null,
+          keterangan: list[idx].keterangan || null,
+          nama: list[idx].nama,
+          nik: list[idx].nik,
+          tempat_lahir: list[idx].tempatLahir,
+          tanggal_lahir: list[idx].tanggalLahir,
+          jenis_kelamin: list[idx].jenisKelamin,
+          alamat: list[idx].alamat,
+          kecamatan: list[idx].kecamatan,
+          desa_kelurahan: list[idx].desaKelurahan,
+          pendapatan: list[idx].pendapatan,
+          tahun_pengangkatan: list[idx].tahunPengangkatan,
+          jumlah_keluarga: list[idx].jumlahKeluarga,
+          no_hp: list[idx].noHp,
+          email: list[idx].email,
+          status: list[idx].status,
+          pas_foto_url: list[idx].pasFoto,
+          nomor_sk: list[idx].dokumenSk?.nomorSk || '',
+          tanggal_sk: list[idx].dokumenSk?.tanggalPenetapanSk ? list[idx].dokumenSk.tanggalPenetapanSk.slice(0, 10) : null,
+          file_sk_url: list[idx].dokumenSk?.fileSk || ''
+        };
+        supabase.from('satlinmas').upsert([payload], { onConflict: 'nik' }).then(({ error }) => {
+          if (error) console.error('Error syncing satlinmas to Supabase:', error.message);
+        });
+      }
+
+      return list[idx];
+    }
+  }
+
+  // Create new
+  const curYear = satlinmasData.tahunPengangkatan || new Date().getFullYear().toString();
+  const regSequence = (list.length + 1).toString().padStart(3, '0');
+  const generatedReg = satlinmasData.noRegistrasi || `63.07/SLM/${curYear}/${regSequence}`;
+
+  const newSatlinmas = {
+    id: `slm-${Date.now().toString().slice(-6)}`,
+    noRegistrasi: generatedReg,
+    nama: satlinmasData.nama || '',
+    nik: satlinmasData.nik || '',
+    tempatLahir: satlinmasData.tempatLahir || 'Barabai',
+    tanggalLahir: satlinmasData.tanggalLahir || '1990-01-01',
+    jenisKelamin: satlinmasData.jenisKelamin || 'Laki-laki',
+    alamat: satlinmasData.alamat || '',
+    provinsi: satlinmasData.provinsi || 'Kalimantan Selatan',
+    kabKota: satlinmasData.kabKota || 'Kabupaten Hulu Sungai Tengah',
+    kecamatan: satlinmasData.kecamatan || 'Barabai',
+    desaKelurahan: satlinmasData.desaKelurahan || 'Barabai Barat',
+    pendapatan: satlinmasData.pendapatan || 'Rp 1.000.000 / Bulan',
+    tahunPengangkatan: satlinmasData.tahunPengangkatan || new Date().getFullYear().toString(),
+    jumlahKeluarga: satlinmasData.jumlahKeluarga || '3 Orang',
+    noHp: satlinmasData.noHp || '',
+    email: satlinmasData.email || '',
+    status: satlinmasData.status || 'aktif',
+    pasFoto: satlinmasData.pasFoto || '',
+    dokumenSk: {
+      nomorSk: satlinmasData.dokumenSk?.nomorSk || '',
+      tanggalPenetapanSk: satlinmasData.dokumenSk?.tanggalPenetapanSk || '',
+      fileSk: satlinmasData.dokumenSk?.fileSk || ''
+    },
+    createdAt: new Date().toISOString()
+  };
+
+  list.unshift(newSatlinmas);
+  localStorage.setItem(STORAGE_KEYS.SATLINMAS, JSON.stringify(list));
+  addAuditLog({
+    aksi: 'TAMBAH',
+    modul: 'Data Satlinmas',
+    target: `${newSatlinmas.nama} (${newSatlinmas.noRegistrasi})`,
+    detail: `Pendaftaran anggota Satlinmas baru Kec. ${newSatlinmas.kecamatan}, Desa ${newSatlinmas.desaKelurahan}.`
+  });
+
+  // Sinkronkan ke Supabase Live Database
+  if (isSupabaseConfigured()) {
+    const payload = {
+      no_registrasi: newSatlinmas.noRegistrasi || null,
+      jabatan: newSatlinmas.jabatan || null,
+      keterangan: newSatlinmas.keterangan || null,
+      nama: newSatlinmas.nama,
+      nik: newSatlinmas.nik,
+      tempat_lahir: newSatlinmas.tempatLahir,
+      tanggal_lahir: newSatlinmas.tanggalLahir,
+      jenis_kelamin: newSatlinmas.jenisKelamin,
+      alamat: newSatlinmas.alamat,
+      provinsi: newSatlinmas.provinsi,
+      kab_kota: newSatlinmas.kabKota,
+      kecamatan: newSatlinmas.kecamatan,
+      desa_kelurahan: newSatlinmas.desaKelurahan,
+      pendapatan: newSatlinmas.pendapatan,
+      tahun_pengangkatan: newSatlinmas.tahunPengangkatan,
+      jumlah_keluarga: newSatlinmas.jumlahKeluarga,
+      no_hp: newSatlinmas.noHp,
+      email: newSatlinmas.email,
+      status: newSatlinmas.status,
+      pas_foto_url: newSatlinmas.pasFoto,
+      nomor_sk: newSatlinmas.dokumenSk.nomorSk,
+      tanggal_sk: newSatlinmas.dokumenSk.tanggalPenetapanSk ? newSatlinmas.dokumenSk.tanggalPenetapanSk.slice(0, 10) : null,
+      file_sk_url: newSatlinmas.dokumenSk.fileSk
+    };
+    supabase.from('satlinmas').upsert([payload], { onConflict: 'nik' }).then(({ error }) => {
+      if (error) console.error('Error inserting satlinmas to Supabase:', error.message);
+    });
+  }
+
+  return newSatlinmas;
+};
+
+export const deleteSatlinmas = (id) => {
+  let list = getSatlinmasList();
+  const target = list.find(s => s.id === id);
+  list = list.filter(s => s.id !== id);
+  localStorage.setItem(STORAGE_KEYS.SATLINMAS, JSON.stringify(list));
+  if (target) {
+    addAuditLog({
+      aksi: 'HAPUS',
+      modul: 'Data Satlinmas',
+      target: `${target.nama} (${target.noRegistrasi})`,
+      detail: `Penghapusan data anggota Satlinmas Kec. ${target.kecamatan}.`
+    });
+
+    // Hapus dari Supabase Live Database
+    if (isSupabaseConfigured()) {
+      if (id.includes('-') && id.length > 20) {
+        supabase.from('satlinmas').delete().eq('id', id).then();
+      } else if (target.noRegistrasi) {
+        supabase.from('satlinmas').delete().eq('no_registrasi', target.noRegistrasi).then();
+      }
+    }
+  }
+  return list;
+};
+
+// ==============================================================================
+// MASTER DATA & SEED DATA POSKAMLING / POS RONDA OPERATIONS
+// ==============================================================================
+export const getPoskamlingList = () => {
+  initStorage();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.POSKAMLING);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) return data;
+    }
+    return isSupabaseConfigured() ? [] : INITIAL_POSKAMLING;
+  } catch (e) {
+    return isSupabaseConfigured() ? [] : INITIAL_POSKAMLING;
+  }
+};
+
+export const savePoskamling = (posData) => {
+  const list = getPoskamlingList();
+
+  if (posData.id) {
+    // Update existing
+    const idx = list.findIndex(p => p.id === posData.id);
+    if (idx >= 0) {
+      list[idx] = {
+        ...list[idx],
+        ...posData,
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(list));
+      addAuditLog({
+        aksi: 'UBAH',
+        modul: 'Data Poskamling',
+        target: `${list[idx].namaPoskamling || list[idx].namaPos} (Kec. ${list[idx].kecamatan})`,
+        detail: `Pembaruan data sarana & kesiapsiagaan pos ronda RT ${list[idx].rt || '-'} Desa ${list[idx].desaKelurahan || list[idx].desa}.`
+      });
+
+      // Sinkronkan ke Supabase Live Database
+      if (isSupabaseConfigured()) {
+        const payload = {
+          nama_poskamling: list[idx].namaPoskamling || list[idx].namaPos,
+          kecamatan: list[idx].kecamatan,
+          desa_kelurahan: list[idx].desaKelurahan || list[idx].desa,
+          alamat_lengkap: list[idx].alamatLengkap || list[idx].alamat || '',
+          rt: list[idx].rt || '01',
+          rw: list[idx].rw || '01',
+          lat: Number(list[idx].lat) || -2.5855,
+          lng: Number(list[idx].lng) || 115.3815,
+          kondisi_fisik: list[idx].kondisiFisik || list[idx].kondisi || 'Baik (Siap Pakai)',
+          status_operasional: list[idx].statusOperasional || list[idx].status || 'Aktif Terjadwal (Tiap Malam)',
+          fasilitas: Array.isArray(list[idx].fasilitas) ? list[idx].fasilitas : (list[idx].sarana || []),
+          nama_ketua_pos: list[idx].namaKetuaPos || '',
+          kontak_wa: list[idx].kontakWa || list[idx].kontakKoordinator || '',
+          personel_ronda: Number(list[idx].personelRonda) || 0,
+          catatan_tambahan: list[idx].catatanTambahan || list[idx].catatan || ''
+        };
+        if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
+          supabase.from('poskamling').update(payload).eq('id', list[idx].id).then();
+        } else {
+          supabase.from('poskamling').insert([payload]).then();
+        }
+      }
+
+      return list[idx];
+    }
+  }
+
+  // Create new
+  const newPos = {
+    id: `pos-${Date.now().toString().slice(-6)}`,
+    namaPoskamling: posData.namaPoskamling || posData.namaPos || '',
+    namaPos: posData.namaPoskamling || posData.namaPos || '',
+    kecamatan: posData.kecamatan || 'Barabai',
+    desaKelurahan: posData.desaKelurahan || posData.desa || 'Barabai Timur',
+    desa: posData.desaKelurahan || posData.desa || 'Barabai Timur',
+    alamatLengkap: posData.alamatLengkap || posData.alamat || '',
+    alamat: posData.alamatLengkap || posData.alamat || '',
+    rt: posData.rt || '01',
+    rw: posData.rw || '01',
+    lat: Number(posData.lat) || -2.5855,
+    lng: Number(posData.lng) || 115.3815,
+    kondisiFisik: posData.kondisiFisik || posData.kondisi || 'Baik (Siap Pakai)',
+    kondisi: posData.kondisiFisik || posData.kondisi || 'Baik (Siap Pakai)',
+    statusOperasional: posData.statusOperasional || posData.status || 'Aktif Terjadwal (Tiap Malam)',
+    status: posData.statusOperasional || posData.status || 'Aktif Terjadwal (Tiap Malam)',
+    fasilitas: Array.isArray(posData.fasilitas) ? posData.fasilitas : (posData.sarana || []),
+    fasilitasTerdata: Array.isArray(posData.fasilitas) ? posData.fasilitas : (posData.sarana || []),
+    sarana: Array.isArray(posData.fasilitas) ? posData.fasilitas : (posData.sarana || []),
+    namaKetuaPos: posData.namaKetuaPos || '',
+    kontakWa: posData.kontakWa || posData.kontakKoordinator || '',
+    kontakKoordinator: posData.kontakWa || posData.kontakKoordinator || '',
+    personelRonda: Number(posData.personelRonda) || 0,
+    catatanTambahan: posData.catatanTambahan || posData.catatan || '',
+    catatan: posData.catatanTambahan || posData.catatan || '',
+    createdAt: new Date().toISOString()
+  };
+
+  list.unshift(newPos);
+  localStorage.setItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(list));
+  addAuditLog({
+    aksi: 'TAMBAH',
+    modul: 'Data Poskamling',
+    target: `${newPos.namaPoskamling} (Kec. ${newPos.kecamatan})`,
+    detail: `Pencatatan titik poskamling baru di RT ${newPos.rt} Desa ${newPos.desaKelurahan}.`
+  });
+
+  // Sinkronkan ke Supabase Live Database
+  if (isSupabaseConfigured()) {
+    const payload = {
+      nama_poskamling: newPos.namaPoskamling,
+      kecamatan: newPos.kecamatan,
+      desa_kelurahan: newPos.desaKelurahan,
+      alamat_lengkap: newPos.alamatLengkap,
+      rt: newPos.rt,
+      rw: newPos.rw,
+      lat: newPos.lat,
+      lng: newPos.lng,
+      kondisi_fisik: newPos.kondisiFisik,
+      status_operasional: newPos.statusOperasional,
+      fasilitas: newPos.fasilitas,
+      nama_ketua_pos: newPos.namaKetuaPos,
+      kontak_wa: newPos.kontakWa,
+      personel_ronda: newPos.personelRonda,
+      catatan_tambahan: newPos.catatanTambahan
+    };
+    supabase.from('poskamling').insert([payload]).then();
+  }
+
+  return newPos;
+};
+
+export const deletePoskamling = (id) => {
+  let list = getPoskamlingList();
+  const target = list.find(p => p.id === id);
+  list = list.filter(p => p.id !== id);
+  localStorage.setItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(list));
+  if (target) {
+    addAuditLog({
+      aksi: 'HAPUS',
+      modul: 'Data Poskamling',
+      target: `${target.namaPoskamling || target.namaPos} (Kec. ${target.kecamatan})`,
+      detail: `Penghapusan data titik poskamling Desa ${target.desaKelurahan || target.desa}.`
+    });
+
+    // Hapus dari Supabase Live Database
+    if (isSupabaseConfigured()) {
+      if (id.includes('-') && id.length > 20) {
+        supabase.from('poskamling').delete().eq('id', id).then();
+      } else if (target.namaPoskamling || target.namaPos) {
+        supabase.from('poskamling').delete().eq('nama_poskamling', target.namaPoskamling || target.namaPos).then();
+      }
+    }
+  }
+  return list;
+};
+
+// ==============================================================================
+// KEGIATAN & PATROLI LAPANGAN SATLINMAS / SATPOL PP OPERATIONS
+// ==============================================================================
+export const getKegiatanPatroliList = () => {
+  initStorage();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.KEGIATAN_PATROLI);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) return data;
+    }
+    return isSupabaseConfigured() ? [] : INITIAL_KEGIATAN_PATROLI;
+  } catch (e) {
+    return isSupabaseConfigured() ? [] : INITIAL_KEGIATAN_PATROLI;
+  }
+};
+
+export const saveKegiatanPatroli = (data) => {
+  const list = getKegiatanPatroliList();
+
+  if (data.id) {
+    const idx = list.findIndex(k => k.id === data.id);
+    if (idx >= 0) {
+      list[idx] = {
+        ...list[idx],
+        ...data,
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
+      addAuditLog({
+        aksi: 'UBAH',
+        modul: 'Kegiatan dan Patroli',
+        target: `${list[idx].judulPatroli || list[idx].judulKegiatan} (${list[idx].kode})`,
+        detail: `Pembaruan laporan patroli di Desa ${list[idx].desaKelurahan || list[idx].desa}, Kec. ${list[idx].kecamatan}.`
+      });
+
+      // Sinkronkan ke Supabase Live Database
+      if (isSupabaseConfigured()) {
+        const payload = {
+          kode: list[idx].kode,
+          judul_patroli: list[idx].judulPatroli || list[idx].judulKegiatan,
+          jenis_kegiatan: list[idx].jenisKegiatan,
+          status_situasi: list[idx].statusSituasi,
+          kecamatan: list[idx].kecamatan,
+          desa_kelurahan: list[idx].desaKelurahan || list[idx].desa,
+          lokasi_spesifik: list[idx].lokasiSpesifik || '',
+          petugas_pelapor: list[idx].petugasPelapor || list[idx].namaPelapor || '',
+          nik_pelapor: list[idx].nikPelapor || null,
+          jumlah_personel: Number(list[idx].jumlahPersonel) || 4,
+          lat: Number(list[idx].lat) || -2.5833,
+          lng: Number(list[idx].lng) || 115.3811,
+          hasil_patroli: list[idx].hasilPatroli || list[idx].uraianKegiatan || '',
+          tindakan_diambil: list[idx].tindakanDiambil || '',
+          foto_dokumentasi: Array.isArray(list[idx].fotoDokumentasi) ? list[idx].fotoDokumentasi : []
+        };
+        if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
+          supabase.from('kegiatan_patroli').update(payload).eq('id', list[idx].id).then();
+        } else {
+          supabase.from('kegiatan_patroli').insert([payload]).then();
+        }
+      }
+
+      return list[idx];
+    }
+  }
+
+  // Generate new entry
+  const now = new Date();
+  const dateCode = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const seq = (list.length + 1).toString().padStart(3, '0');
+  const kode = data.kode || `LAP-PTR-HST-${dateCode}-${seq}`;
+  const waktuLapor = data.waktuLapor || `${now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WITA`;
+
+  const newKegiatan = {
+    id: `keg-${Date.now().toString().slice(-6)}`,
+    kode,
+    judulPatroli: data.judulPatroli || data.judulKegiatan || 'Patroli Trantibum Siskamling Malam',
+    judulKegiatan: data.judulPatroli || data.judulKegiatan || 'Patroli Trantibum Siskamling Malam',
+    jenisKegiatan: data.jenisKegiatan || 'Patroli Trantibum',
+    statusSituasi: data.statusSituasi || 'Aman & Kondusif',
+    kecamatan: data.kecamatan || 'Barabai',
+    desaKelurahan: data.desaKelurahan || data.desa || 'Barabai Timur',
+    desa: data.desaKelurahan || data.desa || 'Barabai Timur',
+    lokasiSpesifik: data.lokasiSpesifik || '',
+    petugasPelapor: data.petugasPelapor || data.namaPelapor || 'Anggota Satlinmas HST',
+    namaPelapor: data.petugasPelapor || data.namaPelapor || 'Anggota Satlinmas HST',
+    nikPelapor: data.nikPelapor || null,
+    jumlahPersonel: Number(data.jumlahPersonel) || 4,
+    lat: Number(data.lat) || -2.5833,
+    lng: Number(data.lng) || 115.3811,
+    hasilPatroli: data.hasilPatroli || data.uraianKegiatan || '',
+    uraianKegiatan: data.hasilPatroli || data.uraianKegiatan || '',
+    tindakanDiambil: data.tindakanDiambil || '',
+    fotoDokumentasi: Array.isArray(data.fotoDokumentasi) ? data.fotoDokumentasi : [],
+    waktuLapor,
+    createdAt: new Date().toISOString()
+  };
+
+  list.unshift(newKegiatan);
+  localStorage.setItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
+  addAuditLog({
+    aksi: 'INPUT',
+    modul: 'Kegiatan dan Patroli',
+    target: `${newKegiatan.judulPatroli} (${newKegiatan.kode})`,
+    detail: `Input laporan kegiatan/patroli baru oleh ${newKegiatan.petugasPelapor} di Kec. ${newKegiatan.kecamatan}.`
+  });
+
+  // Sinkronkan ke Supabase Live Database
+  if (isSupabaseConfigured()) {
+    const payload = {
+      kode: newKegiatan.kode,
+      judul_patroli: newKegiatan.judulPatroli,
+      jenis_kegiatan: newKegiatan.jenisKegiatan,
+      status_situasi: newKegiatan.statusSituasi,
+      kecamatan: newKegiatan.kecamatan,
+      desa_kelurahan: newKegiatan.desaKelurahan,
+      lokasi_spesifik: newKegiatan.lokasiSpesifik,
+      petugas_pelapor: newKegiatan.petugasPelapor,
+      nik_pelapor: newKegiatan.nikPelapor,
+      jumlah_personel: newKegiatan.jumlahPersonel,
+      lat: newKegiatan.lat,
+      lng: newKegiatan.lng,
+      hasil_patroli: newKegiatan.hasilPatroli,
+      tindakan_diambil: newKegiatan.tindakanDiambil,
+      foto_dokumentasi: newKegiatan.fotoDokumentasi
+    };
+    supabase.from('kegiatan_patroli').insert([payload]).then();
+  }
+
+  return newKegiatan;
+};
+
+export const deleteKegiatanPatroli = (id) => {
+  let list = getKegiatanPatroliList();
+  const target = list.find(k => k.id === id);
+  list = list.filter(k => k.id !== id);
+  localStorage.setItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
+  if (target) {
+    addAuditLog({
+      aksi: 'HAPUS',
+      modul: 'Kegiatan dan Patroli',
+      target: `${target.judulPatroli || target.judulKegiatan} (${target.kode})`,
+      detail: `Penghapusan laporan patroli Kec. ${target.kecamatan}.`
+    });
+
+    // Hapus dari Supabase Live Database
+    if (isSupabaseConfigured()) {
+      if (id.includes('-') && id.length > 20) {
+        supabase.from('kegiatan_patroli').delete().eq('id', id).then();
+      } else if (target.kode) {
+        supabase.from('kegiatan_patroli').delete().eq('kode', target.kode).then();
+      }
+    }
+  }
+  return list;
+};
+
+// ==============================================================================
+// MASTER FASILITAS & SARANA POSKAMLING OPERATIONS (TAMBAH / UBAH / KURANG)
+// ==============================================================================
+export const getFasilitasPoskamlingList = () => {
+  initStorage();
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEYS.FASILITAS_POSKAMLING) || '[]');
+    return data.length > 0 ? data : DEFAULT_MASTER_FASILITAS_POSKAMLING;
+  } catch (e) {
+    return DEFAULT_MASTER_FASILITAS_POSKAMLING;
+  }
+};
+
+export const saveFasilitasPoskamling = (itemData) => {
+  const list = getFasilitasPoskamlingList();
+
+  if (itemData.id) {
+    const idx = list.findIndex(f => f.id === itemData.id);
+    if (idx >= 0) {
+      const oldNama = list[idx].namaFasilitas;
+      list[idx] = {
+        ...list[idx],
+        ...itemData,
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.FASILITAS_POSKAMLING, JSON.stringify(list));
+
+      // Jika nama fasilitas berubah, sinkronkan nama di seluruh data Poskamling
+      if (oldNama && itemData.namaFasilitas && oldNama !== itemData.namaFasilitas) {
+        syncRenameFasilitasInPoskamling(oldNama, itemData.namaFasilitas);
+      }
+
+      // Sinkronkan ke Supabase Live Database
+      if (isSupabaseConfigured()) {
+        const payload = {
+          nama_fasilitas: list[idx].namaFasilitas,
+          kategori: list[idx].kategori,
+          deskripsi: list[idx].deskripsi || '',
+          standar_minimal: list[idx].standarMinimal || '1 Unit',
+          aktif: list[idx].aktif !== false
+        };
+        if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
+          supabase.from('master_fasilitas_poskamling').update(payload).eq('id', list[idx].id).then();
+        } else {
+          supabase.from('master_fasilitas_poskamling').insert([payload]).then();
+        }
+      }
+
+      return list[idx];
+    }
+  }
+
+  const newItem = {
+    id: `fas-${Date.now().toString().slice(-6)}`,
+    namaFasilitas: (itemData.namaFasilitas || '').trim(),
+    kategori: itemData.kategori || 'Peralatan Keamanan',
+    statusWajib: itemData.statusWajib || 'Standar',
+    standarMinimal: itemData.standarMinimal || '1 Unit',
+    deskripsi: itemData.deskripsi || '',
+    aktif: itemData.aktif !== false,
+    createdAt: new Date().toISOString()
+  };
+
+  list.push(newItem);
+  localStorage.setItem(STORAGE_KEYS.FASILITAS_POSKAMLING, JSON.stringify(list));
+
+  // Sinkronkan ke Supabase Live Database
+  if (isSupabaseConfigured()) {
+    const payload = {
+      nama_fasilitas: newItem.namaFasilitas,
+      kategori: newItem.kategori,
+      deskripsi: newItem.deskripsi,
+      standar_minimal: newItem.standarMinimal,
+      aktif: newItem.aktif
+    };
+    supabase.from('master_fasilitas_poskamling').insert([payload]).then();
+  }
+
+  return newItem;
+};
+
+export const deleteFasilitasPoskamling = (id, removeFromPoskamling = false) => {
+  let list = getFasilitasPoskamlingList();
+  const target = list.find(f => f.id === id);
+  if (!target) return list;
+
+  list = list.filter(f => f.id !== id);
+  localStorage.setItem(STORAGE_KEYS.FASILITAS_POSKAMLING, JSON.stringify(list));
+
+  // Opsi: Jika removeFromPoskamling true, hapus sarana ini dari poskamling yang telah mencentangnya
+  if (removeFromPoskamling && target.namaFasilitas) {
+    syncRemoveFasilitasFromPoskamling(target.namaFasilitas);
+  }
+
+  // Hapus dari Supabase Live Database
+  if (isSupabaseConfigured()) {
+    if (id.includes('-') && id.length > 20) {
+      supabase.from('master_fasilitas_poskamling').delete().eq('id', id).then();
+    } else if (target.namaFasilitas) {
+      supabase.from('master_fasilitas_poskamling').delete().eq('nama_fasilitas', target.namaFasilitas).then();
+    }
+  }
+
+  return list;
+};
+
+export const resetFasilitasPoskamlingToDefault = () => {
+  localStorage.setItem(STORAGE_KEYS.FASILITAS_POSKAMLING, JSON.stringify(DEFAULT_MASTER_FASILITAS_POSKAMLING));
+  return DEFAULT_MASTER_FASILITAS_POSKAMLING;
+};
+
+// Sinkronisasi otomatis saat nama fasilitas di master diperbarui
+export const syncRenameFasilitasInPoskamling = (oldNama, newNama) => {
+  try {
+    let posList = JSON.parse(localStorage.getItem(STORAGE_KEYS.POSKAMLING) || '[]');
+    let updated = false;
+    posList = posList.map(pos => {
+      if (Array.isArray(pos.fasilitas) && pos.fasilitas.includes(oldNama)) {
+        updated = true;
+        return {
+          ...pos,
+          fasilitas: pos.fasilitas.map(f => f === oldNama ? newNama : f)
+        };
+      }
+      return pos;
+    });
+    if (updated) {
+      localStorage.setItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(posList));
+    }
+  } catch (e) {
+    console.error('Error syncing renamed facility in poskamling:', e);
+  }
+};
+
+// Sinkronisasi otomatis saat fasilitas di master dihapus
+export const syncRemoveFasilitasFromPoskamling = (namaFasilitas) => {
+  try {
+    let posList = JSON.parse(localStorage.getItem(STORAGE_KEYS.POSKAMLING) || '[]');
+    let updated = false;
+    posList = posList.map(pos => {
+      if (Array.isArray(pos.fasilitas) && pos.fasilitas.includes(namaFasilitas)) {
+        updated = true;
+        return {
+          ...pos,
+          fasilitas: pos.fasilitas.filter(f => f !== namaFasilitas)
+        };
+      }
+      return pos;
+    });
+    if (updated) {
+      localStorage.setItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(posList));
+    }
+  } catch (e) {
+    console.error('Error syncing removed facility in poskamling:', e);
+  }
+};
+
 
 
 

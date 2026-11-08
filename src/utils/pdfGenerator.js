@@ -134,7 +134,7 @@ export const generateOfficialLetterPDF = (pelanggaran, currentStep) => {
   doc.roundedRect(margin, yPos, 48, 38, 3, 3, 'FD');
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text('VERIFIKASI DIGITAL GARDA MURAKATA', margin + 4, yPos + 7);
+  doc.text('VERIFIKASI DIGITAL LINDUNGMAS HST', margin + 4, yPos + 7);
   
   // Fake QR graphic inside
   doc.setFillColor(15, 42, 74);
@@ -183,7 +183,7 @@ export const generateOfficialLetterPDF = (pelanggaran, currentStep) => {
   // 8. FOOTER NOTE
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text(`Dokumen ini diterbitkan secara otomatis oleh Sistem GARDA MURAKATA HST | Register: ${pelanggaran.nomorRegister}`, margin, 285);
+  doc.text(`Dokumen ini diterbitkan secara otomatis oleh Sistem LINDUNGMAS HST | Register: ${pelanggaran.nomorRegister}`, margin, 285);
 
   return doc;
 };

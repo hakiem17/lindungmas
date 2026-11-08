@@ -27,126 +27,83 @@ import {
   ZoomIn,
   Loader2,
   Sparkles,
-  Palette
+  Radio,
+  Car,
+  ShieldCheck,
+  Phone,
+  Shield,
+  Clock,
+  FileText
 } from 'lucide-react';
 import { KECAMATAN_HST } from '../../data/mockData';
 import { getWilayahList } from '../../data/storageService';
-import { StageBadge } from '../common/Badge';
-import { formatPersonilList } from '../pengaduan/BukuRegisterPengaduan';
 
 // ==============================================================================
-// SKALA GRADASI WARNA SPASIAL (CHOROPLETH DENSITY TIERS)
+// SKALA WARNA WILAYAH BERDASARKAN JUMLAH POSKAMLING, PATROLI & SATLINMAS
+// Semakin banyak pos kamling, patroli, dan linmasnya, maka warna wilayah semakin pekat
 // ==============================================================================
-export const GRADASI_TIERS = [
-  { min: 0, max: 0, label: '0 (Kondusif)', level: 'Aman' },
-  { min: 1, max: 2, label: '1 - 2 (Rendah)', level: 'Rendah' },
-  { min: 3, max: 5, label: '3 - 5 (Sedang)', level: 'Sedang' },
-  { min: 6, max: 9, label: '6 - 9 (Tinggi)', level: 'Tinggi' },
-  { min: 10, max: Infinity, label: '10+ (Prioritas Utama)', level: 'Sangat Tinggi' }
+export const SKALA_SEBARAN_TIERS = [
+  { min: 0, max: 0, label: '0 Data (Belum Ada Data)' },
+  { min: 1, max: 2, label: '1 - 2 Data' },
+  { min: 3, max: 5, label: '3 - 5 Data' },
+  { min: 6, max: 9, label: '6 - 9 Data' },
+  { min: 10, max: Infinity, label: '10+ Data (Banyak & Lengkap)' }
 ];
 
-export const getGradasiColor = (count, palette = 'trantibum') => {
-  if (count <= 0) {
+export const getWarnaAktivitasWilayah = (count) => {
+  if (!count || count <= 0) {
     return {
-      fill: '#F1F5F9',
+      fill: '#F8FAFC',
       border: '#94A3B8',
       opacity: 0.18,
-      label: 'Kondusif (0)',
-      tier: 'aman',
-      textColor: '#475569',
+      label: '0 Data',
+      textColor: '#64748B',
       badgeClass: 'bg-slate-100 text-slate-700 border-slate-300'
     };
   }
 
-  if (palette === 'spektrum_satpol') {
-    if (count <= 2) {
-      return {
-        fill: '#93C5FD',
-        border: '#2563EB',
-        opacity: 0.45,
-        label: `Rendah (${count})`,
-        tier: 'rendah',
-        textColor: '#1E40AF',
-        badgeClass: 'bg-blue-100 text-blue-800 border-blue-300'
-      };
-    }
-    if (count <= 5) {
-      return {
-        fill: '#FCD34D',
-        border: '#D97706',
-        opacity: 0.55,
-        label: `Sedang (${count})`,
-        tier: 'sedang',
-        textColor: '#B45309',
-        badgeClass: 'bg-amber-100 text-amber-800 border-amber-300'
-      };
-    }
-    if (count <= 9) {
-      return {
-        fill: '#FB923C',
-        border: '#EA580C',
-        opacity: 0.65,
-        label: `Tinggi (${count})`,
-        tier: 'tinggi',
-        textColor: '#C2410C',
-        badgeClass: 'bg-orange-100 text-orange-800 border-orange-300'
-      };
-    }
-    return {
-      fill: '#DC2626',
-      border: '#991B1B',
-      opacity: 0.75,
-      label: `Prioritas Utama (${count})`,
-      tier: 'prioritas',
-      textColor: '#991B1B',
-      badgeClass: 'bg-red-100 text-red-800 border-red-300 font-bold'
-    };
-  }
-
-  // Default Palette: 'trantibum' (Traffic Light Hijau - Kuning - Oranye - Merah)
   if (count <= 2) {
     return {
-      fill: '#4ADE80',
-      border: '#16A34A',
+      fill: '#D1FAE5',
+      border: '#10B981',
       opacity: 0.40,
-      label: `Rendah (${count})`,
-      tier: 'rendah',
-      textColor: '#15803D',
-      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300'
+      label: `${count} Data`,
+      textColor: '#065F46',
+      badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200'
     };
   }
   if (count <= 5) {
     return {
-      fill: '#FACC15',
-      border: '#CA8A04',
-      opacity: 0.50,
-      label: `Sedang (${count})`,
-      tier: 'sedang',
-      textColor: '#A16207',
-      badgeClass: 'bg-yellow-100 text-yellow-900 border-yellow-300'
+      fill: '#6EE7B7',
+      border: '#059669',
+      opacity: 0.55,
+      label: `${count} Data`,
+      textColor: '#064E3B',
+      badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300'
     };
   }
   if (count <= 9) {
     return {
-      fill: '#FB923C',
-      border: '#EA580C',
-      opacity: 0.60,
-      label: `Tinggi (${count})`,
-      tier: 'tinggi',
-      textColor: '#C2410C',
-      badgeClass: 'bg-orange-100 text-orange-900 border-orange-300'
+      fill: '#10B981',
+      border: '#047857',
+      opacity: 0.70,
+      label: `${count} Data`,
+      textColor: '#022C22',
+      badgeClass: 'bg-emerald-200 text-emerald-950 border-emerald-400 font-semibold'
     };
   }
   return {
-    fill: '#EF4444',
-    border: '#B91C1C',
-    opacity: 0.75,
-    label: `Prioritas Utama (${count})`,
-    tier: 'prioritas',
-    textColor: '#991B1B',
-    badgeClass: 'bg-red-100 text-red-900 border-red-300 font-bold'
+    fill: '#047857',
+    border: '#064E3B',
+    opacity: 0.85,
+    label: `${count} Data (Lengkap & Aktif)`,
+    textColor: '#FFFFFF',
+    badgeClass: 'bg-emerald-700 text-white border-emerald-900 font-bold'
   };
 };
+
+export const getGradasiColor = getWarnaAktivitasWilayah;
+export const GRADASI_TIERS = SKALA_SEBARAN_TIERS;
 
 // Koordinat Bounding Box Kabupaten Hulu Sungai Tengah
 const HST_BOUNDS = [
@@ -157,8 +114,13 @@ const HST_CENTER = [-2.6175, 115.4883];
 const BARABAI_CENTER = [-2.5833, 115.3811];
 
 export default function PetaSpasialHST({ 
+  satlinmasList = [],
+  poskamlingList = [],
+  kegiatanPatroliList = [],
   pelanggaranList = [], 
   rekapTrantibumList = [], 
+  wilayahList: propWilayahList,
+  assignedKecamatan = null,
   onSelectPelanggaran 
 }) {
   const mapContainerRef = useRef(null);
@@ -170,6 +132,7 @@ export default function PetaSpasialHST({
   // Layer lookup map untuk zooming cepat ke fitur terpilih
   const desaFeaturesMapRef = useRef(new Map());
   const kecFeaturesMapRef = useRef(new Map());
+  const markersMapRef = useRef(new Map());
 
   // GeoJSON Data State
   const [geoKecamatanData, setGeoKecamatanData] = useState(null);
@@ -177,23 +140,21 @@ export default function PetaSpasialHST({
   const [isLoadingGeo, setIsLoadingGeo] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  // Filter States
-  const [selectedSource, setSelectedSource] = useState('semua'); // 'semua' | 'penindakan' | 'pelanggaran'
-  const [selectedKecamatan, setSelectedKecamatan] = useState('semua');
+  // Filter States: 'semua' | 'poskamling' | 'patroli' | 'satlinmas' | 'penindakan'
+  const [selectedSource, setSelectedSource] = useState('semua');
+  const [selectedKecamatan, setSelectedKecamatan] = useState(assignedKecamatan || 'semua');
   const [selectedDesa, setSelectedDesa] = useState('semua');
-  const [selectedTindakan, setSelectedTindakan] = useState('semua');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSideTab, setActiveSideTab] = useState('ranking'); // 'ranking' | 'desa_rawan' | 'titik'
+  const [activeSideTab, setActiveSideTab] = useState('ranking'); // 'ranking' | 'poskamling' | 'patroli' | 'satlinmas'
 
-  // Layer Visibility & Gradasi Toggles
+  // Layer Visibility
   const [showKecamatanBorders, setShowKecamatanBorders] = useState(true);
   const [showDesaBorders, setShowDesaBorders] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
-  const [useGradasi, setUseGradasi] = useState(true); // Default ON dengan gradasi warna choropleth
-  const [gradasiPalette, setGradasiPalette] = useState('trantibum'); // 'trantibum' | 'spektrum_satpol'
+  const [showMobileLegend, setShowMobileLegend] = useState(false);
 
   // Master wilayah list
-  const wilayahList = useMemo(() => getWilayahList() || KECAMATAN_HST, []);
+  const wilayahList = useMemo(() => propWilayahList || getWilayahList() || KECAMATAN_HST, [propWilayahList]);
 
   // =========================================================================
   // 1. FETCH GEOJSON ASSETS (Kecamatan & 169 Desa HST)
@@ -233,55 +194,213 @@ export default function PetaSpasialHST({
     };
   }, []);
 
+  // Map centroids of desa from geoDesaData for fallback coordinates
+  const desaCentroids = useMemo(() => {
+    const map = new Map();
+    if (!geoDesaData || !geoDesaData.features) return map;
+
+    geoDesaData.features.forEach(f => {
+      const dName = f.properties?.NAMOBJ;
+      const kName = f.properties?.WADMKC;
+      if (!dName) return;
+
+      let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+      const processCoords = (coords) => {
+        coords.forEach(pt => {
+          if (Array.isArray(pt[0])) {
+            processCoords(pt);
+          } else {
+            const lng = pt[0];
+            const lat = pt[1];
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
+            if (lng < minLng) minLng = lng;
+            if (lng > maxLng) maxLng = lng;
+          }
+        });
+      };
+
+      if (f.geometry && f.geometry.coordinates) {
+        processCoords(f.geometry.coordinates);
+        if (minLat < 90) {
+          const centerLat = (minLat + maxLat) / 2;
+          const centerLng = (minLng + maxLng) / 2;
+          map.set(dName.toLowerCase().trim(), { lat: centerLat, lng: centerLng });
+          if (kName) {
+            map.set(`${kName.toLowerCase().trim()}_${dName.toLowerCase().trim()}`, { lat: centerLat, lng: centerLng });
+          }
+        }
+      }
+    });
+
+    return map;
+  }, [geoDesaData]);
+
   // =========================================================================
-  // 2. GABUNGKAN & STANDARISASI TITIK SPASIAL
+  // 2. GABUNGKAN & STANDARISASI TITIK SPASIAL (POSKAMLING, PATROLI, SATLINMAS)
   // =========================================================================
   const allMapPoints = useMemo(() => {
     const points = [];
 
-    // A. Titik dari Rekap Kegiatan Penindakan & Trantibum
-    (rekapTrantibumList || []).forEach((item) => {
+    // A. DATA POSKAMLING
+    (poskamlingList || []).forEach((item, idx) => {
+      let lat = Number(item.lat);
+      let lng = Number(item.lng);
+
+      // Fallback coordinates if missing
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        const foundDesa = desaCentroids.get((item.desaKelurahan || item.desa || '').toLowerCase().trim());
+        if (foundDesa) {
+          lat = foundDesa.lat + (idx % 3) * 0.001;
+          lng = foundDesa.lng + (idx % 3) * 0.001;
+        } else {
+          const foundKec = wilayahList.find(k => k.nama.toLowerCase() === (item.kecamatan || '').toLowerCase());
+          if (foundKec) {
+            lat = foundKec.lat + (idx % 3) * 0.002;
+            lng = foundKec.lng + (idx % 3) * 0.002;
+          } else {
+            lat = BARABAI_CENTER[0];
+            lng = BARABAI_CENTER[1];
+          }
+        }
+      }
+
+      points.push({
+        id: `pos-${item.id || idx}`,
+        originalId: item.id,
+        sourceType: 'poskamling',
+        sourceLabel: 'Poskamling / Pos Ronda',
+        title: item.namaPoskamling || 'Pos Ronda Linmas',
+        subtitle: `Ketua Pos: ${item.namaKetuaPos || '-'} (${item.kontakWa || '-'})`,
+        kecamatan: item.kecamatan || 'Barabai',
+        desa: item.desaKelurahan || item.desa || '',
+        alamat: item.alamatLengkap || item.alamat || '',
+        rt: item.rt || '-',
+        rw: item.rw || '-',
+        status: item.statusOperasional || 'Aktif Terjadwal',
+        kondisi: item.kondisiFisik || 'Baik (Siap Pakai)',
+        personilCount: item.personelRonda || 0,
+        fasilitas: item.fasilitas || [],
+        namaKetua: item.namaKetuaPos || '-',
+        kontakWa: item.kontakWa || '-',
+        catatan: item.catatanTambahan || '',
+        lat,
+        lng,
+        raw: item
+      });
+    });
+
+    // B. KEGIATAN DAN PATROLI LAPANGAN
+    (kegiatanPatroliList || []).forEach((item, idx) => {
+      let lat = Number(item.lat);
+      let lng = Number(item.lng);
+
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        const foundDesa = desaCentroids.get((item.desaKelurahan || item.desa || '').toLowerCase().trim());
+        if (foundDesa) {
+          lat = foundDesa.lat - 0.0015;
+          lng = foundDesa.lng + 0.0015;
+        } else {
+          const foundKec = wilayahList.find(k => k.nama.toLowerCase() === (item.kecamatan || '').toLowerCase());
+          if (foundKec) {
+            lat = foundKec.lat - 0.002;
+            lng = foundKec.lng + 0.002;
+          } else {
+            lat = BARABAI_CENTER[0];
+            lng = BARABAI_CENTER[1];
+          }
+        }
+      }
+
+      points.push({
+        id: `ptr-${item.id || idx}`,
+        originalId: item.id,
+        sourceType: 'patroli',
+        sourceLabel: 'Kegiatan dan Patroli Lapangan',
+        title: item.judulPatroli || item.judul || 'Patroli Trantibum',
+        subtitle: `Petugas: ${item.petugasPelapor || 'Satpol PP / Linmas'}`,
+        jenisKegiatan: item.jenisKegiatan || 'Patroli Trantibum',
+        status: item.statusSituasi || 'Aman & Kondusif',
+        kecamatan: item.kecamatan || 'Barabai',
+        desa: item.desaKelurahan || item.desa || '',
+        lokasi: item.lokasiSpesifik || item.lokasi || '',
+        petugasPelapor: item.petugasPelapor || '-',
+        personilCount: item.jumlahPersonel || 0,
+        waktu: item.waktuLapor || item.waktu || 'Terkini',
+        hasil: item.hasilPatroli || '',
+        tindakan: item.tindakanDiambil || '',
+        lat,
+        lng,
+        raw: item
+      });
+    });
+
+    // C. DATA ANGGOTA SATLINMAS
+    (satlinmasList || []).forEach((item, idx) => {
+      // Find village or kecamatan center
+      const dKey = (item.desaKelurahan || '').toLowerCase().trim();
+      const kKey = (item.kecamatan || '').toLowerCase().trim();
+      const foundDesa = desaCentroids.get(`${kKey}_${dKey}`) || desaCentroids.get(dKey);
+      
+      let baseLat = BARABAI_CENTER[0];
+      let baseLng = BARABAI_CENTER[1];
+
+      if (foundDesa) {
+        baseLat = foundDesa.lat;
+        baseLng = foundDesa.lng;
+      } else {
+        const foundKec = wilayahList.find(k => k.nama.toLowerCase() === kKey);
+        if (foundKec) {
+          baseLat = foundKec.lat;
+          baseLng = foundKec.lng;
+        }
+      }
+
+      // Golden spiral subtle offset to avoid exact stacking
+      const angle = (idx * 137.5 * Math.PI) / 180;
+      const radius = 0.0018 * Math.sqrt((idx % 8) + 1);
+      const lat = baseLat + radius * Math.cos(angle);
+      const lng = baseLng + radius * Math.sin(angle);
+
+      points.push({
+        id: `slm-${item.id || idx}`,
+        originalId: item.id,
+        sourceType: 'satlinmas',
+        sourceLabel: 'Data Anggota Satlinmas',
+        title: item.nama || 'Anggota Satlinmas',
+        subtitle: `No. Reg: ${item.noRegistrasi || '-'}`,
+        noRegistrasi: item.noRegistrasi || '-',
+        nik: item.nik || '-',
+        kecamatan: item.kecamatan || 'Barabai',
+        desa: item.desaKelurahan || '',
+        alamat: item.alamat || '',
+        status: item.status === 'aktif' ? 'Aktif Bertugas' : 'Tidak Aktif',
+        noHp: item.noHp || '-',
+        email: item.email || '-',
+        pasFoto: item.pasFoto || '',
+        dokumenSk: item.dokumenSk || null,
+        tahunPengangkatan: item.tahunPengangkatan || '-',
+        lat,
+        lng,
+        raw: item
+      });
+    });
+
+    // D. REKAP PENINDAKAN TRANTIBUM & PERDA (SUPPLEMENTARY)
+    (rekapTrantibumList || []).forEach((item, idx) => {
       if (item.lat && item.lng) {
         points.push({
-          id: `trb-${item.id}`,
+          id: `trb-${item.id || idx}`,
           originalId: item.id,
           sourceType: 'penindakan',
-          sourceLabel: 'Kegiatan Penindakan Trantibum',
-          title: item.jenisPengaduan || 'Kegiatan Trantibum',
-          tindakLanjut: item.tindakLanjut || 'Penertiban',
-          status: item.statusPengaduan || 'Terlayani',
-          pelapor: item.namaPelapor || 'Masyarakat',
-          personil: formatPersonilList(item.personil),
-          perda: item.perdaYangDipakai || 'Perda No 6 Tahun 2024 Trantibum',
-          tanggal: item.tanggal || '-',
+          sourceLabel: 'Penindakan Trantibum',
+          title: item.jenisPengaduan || 'Penindakan Lapangan',
+          subtitle: `Tindak Lanjut: ${item.tindakLanjut || 'Penertiban'}`,
           kecamatan: item.kecamatan || 'Barabai',
           desa: item.desa || '',
           lokasi: item.lokasi || '',
-          lat: Number(item.lat),
-          lng: Number(item.lng),
-          raw: item
-        });
-      }
-    });
-
-    // B. Titik dari Berkas Pelanggaran Perda
-    (pelanggaranList || []).forEach((item) => {
-      if (item.lat && item.lng) {
-        points.push({
-          id: `plg-${item.id}`,
-          originalId: item.id,
-          sourceType: 'pelanggaran',
-          sourceLabel: 'Berkas Pelanggaran Perda',
-          title: item.namaPelanggar || 'Pelanggaran Perda',
-          tindakLanjut: item.statusTindakLanjut ? `Tahap ${item.statusTindakLanjut}` : 'Peneguran',
-          status: item.isSelesai ? 'Selesai' : `Tahap ${item.statusTindakLanjut}`,
-          pelapor: item.petugasPencatat || 'Petugas Patroli',
-          personil: item.petugasPencatat ? [item.petugasPencatat] : [],
-          perda: Array.isArray(item.perdaIds) ? item.perdaIds.join(', ') : (item.perdaYangDipakai || 'Perda No 6 Tahun 2024'),
-          tanggal: item.tanggal || '-',
-          kecamatan: item.kecamatan || 'Barabai',
-          desa: item.desa || '',
-          lokasi: item.lokasiNama || item.alamat || '',
+          status: item.statusPengaduan || 'Terlayani',
+          waktu: item.tanggal || '-',
           lat: Number(item.lat),
           lng: Number(item.lng),
           raw: item
@@ -290,7 +409,13 @@ export default function PetaSpasialHST({
     });
 
     return points;
-  }, [rekapTrantibumList, pelanggaranList]);
+  }, [poskamlingList, kegiatanPatroliList, satlinmasList, rekapTrantibumList, desaCentroids, wilayahList]);
+
+  // Counts of each category
+  const totalPoskamling = useMemo(() => allMapPoints.filter(p => p.sourceType === 'poskamling').length, [allMapPoints]);
+  const totalPatroli = useMemo(() => allMapPoints.filter(p => p.sourceType === 'patroli').length, [allMapPoints]);
+  const totalSatlinmas = useMemo(() => allMapPoints.filter(p => p.sourceType === 'satlinmas').length, [allMapPoints]);
+  const totalPenindakan = useMemo(() => allMapPoints.filter(p => p.sourceType === 'penindakan').length, [allMapPoints]);
 
   // =========================================================================
   // 3. DAFTAR DESA DINAMIS SESUAI KECAMATAN YANG DIPILIH
@@ -338,23 +463,23 @@ export default function PetaSpasialHST({
     const desaPoints = allMapPoints.filter(p => 
       p.desa && p.desa.toLowerCase() === selectedDesa.toLowerCase()
     );
-    const penindakanCount = desaPoints.filter(p => p.sourceType === 'penindakan').length;
-    const pelanggaranCount = desaPoints.filter(p => p.sourceType === 'pelanggaran').length;
+    const posCount = desaPoints.filter(p => p.sourceType === 'poskamling').length;
+    const patCount = desaPoints.filter(p => p.sourceType === 'patroli').length;
+    const linCount = desaPoints.filter(p => p.sourceType === 'satlinmas').length;
 
     return {
       nama: props.NAMOBJ,
       kecamatan: props.WADMKC,
       luasHa: Math.round((props.SHAPE_Area || 0) / 10000).toLocaleString('id-ID'),
-      kodePum: props.KDEPUM || props.KDCPUM || '-',
-      remark: props.REMARK || 'Wilayah Terverifikasi BIG',
-      penindakanCount,
-      pelanggaranCount,
+      posCount,
+      patCount,
+      linCount,
       totalTitik: desaPoints.length
     };
   }, [selectedDesa, selectedKecamatan, geoDesaData, allMapPoints]);
 
   // =========================================================================
-  // 4. ANALISIS STATISTIK & PERINGKAT AREA PELANGGARAN TERBANYAK
+  // 4. ANALISIS STATISTIK SEBARAN PER KECAMATAN
   // =========================================================================
   const areaRanking = useMemo(() => {
     const sourcePoints = allMapPoints.filter(p => {
@@ -366,16 +491,10 @@ export default function PetaSpasialHST({
 
     const stats = wilayahList.map(kec => {
       const kecPoints = sourcePoints.filter(p => p.kecamatan.toLowerCase() === kec.nama.toLowerCase());
-      const penindakanCount = kecPoints.filter(p => p.sourceType === 'penindakan').length;
-      const pelanggaranCount = kecPoints.filter(p => p.sourceType === 'pelanggaran').length;
+      const posCount = kecPoints.filter(p => p.sourceType === 'poskamling').length;
+      const patCount = kecPoints.filter(p => p.sourceType === 'patroli').length;
+      const linCount = kecPoints.filter(p => p.sourceType === 'satlinmas').length;
       const total = kecPoints.length;
-
-      // Cari desa/kelurahan dengan kejadian terbanyak di kecamatan ini
-      const desaMap = {};
-      kecPoints.forEach(p => {
-        if (p.desa) desaMap[p.desa] = (desaMap[p.desa] || 0) + 1;
-      });
-      const topDesa = Object.keys(desaMap).sort((a, b) => desaMap[b] - desaMap[a])[0] || '-';
 
       return {
         id: kec.id,
@@ -383,38 +502,15 @@ export default function PetaSpasialHST({
         lat: kec.lat,
         lng: kec.lng,
         total,
-        penindakanCount,
-        pelanggaranCount,
-        topDesa,
+        posCount,
+        patCount,
+        linCount,
         percentage: totalAll > 0 ? Math.round((total / totalAll) * 100) : 0
       };
     }).sort((a, b) => b.total - a.total);
 
     return stats;
   }, [allMapPoints, selectedSource, wilayahList]);
-
-  // Top Desa Rawan Terbanyak
-  const topDesaRanking = useMemo(() => {
-    const desaCounts = {};
-    allMapPoints.forEach(p => {
-      if (!p.desa) return;
-      const key = `${p.desa}|${p.kecamatan}`;
-      if (!desaCounts[key]) {
-        desaCounts[key] = {
-          desa: p.desa,
-          kecamatan: p.kecamatan,
-          penindakan: 0,
-          pelanggaran: 0,
-          total: 0
-        };
-      }
-      if (p.sourceType === 'penindakan') desaCounts[key].penindakan += 1;
-      if (p.sourceType === 'pelanggaran') desaCounts[key].pelanggaran += 1;
-      desaCounts[key].total += 1;
-    });
-
-    return Object.values(desaCounts).sort((a, b) => b.total - a.total).slice(0, 10);
-  }, [allMapPoints]);
 
   // Lookup data agregasi statistik kejadian per kecamatan untuk gradasi cepat
   const kecStatsMap = useMemo(() => {
@@ -434,26 +530,24 @@ export default function PetaSpasialHST({
       const kName = (p.kecamatan || '').toLowerCase().trim();
       const fullKey = `${kName}_${dName}`;
 
-      const curr = map.get(fullKey) || { total: 0, penindakan: 0, pelanggaran: 0, desa: p.desa, kecamatan: p.kecamatan };
+      const curr = map.get(fullKey) || { total: 0, pos: 0, pat: 0, lin: 0, desa: p.desa, kecamatan: p.kecamatan };
       curr.total += 1;
-      if (p.sourceType === 'penindakan') curr.penindakan += 1;
-      else curr.pelanggaran += 1;
+      if (p.sourceType === 'poskamling') curr.pos += 1;
+      else if (p.sourceType === 'patroli') curr.pat += 1;
+      else if (p.sourceType === 'satlinmas') curr.lin += 1;
       map.set(fullKey, curr);
 
-      const currD = map.get(dName) || { total: 0, penindakan: 0, pelanggaran: 0, desa: p.desa, kecamatan: p.kecamatan };
+      const currD = map.get(dName) || { total: 0, pos: 0, pat: 0, lin: 0, desa: p.desa, kecamatan: p.kecamatan };
       currD.total += 1;
-      if (p.sourceType === 'penindakan') currD.penindakan += 1;
-      else currD.pelanggaran += 1;
+      if (p.sourceType === 'poskamling') currD.pos += 1;
+      else if (p.sourceType === 'patroli') currD.pat += 1;
+      else if (p.sourceType === 'satlinmas') currD.lin += 1;
       map.set(dName, currD);
     });
     return map;
   }, [allMapPoints]);
 
-  // Area dengan Pelanggaran Terbanyak (#1)
-  const topArea = areaRanking[0] || { nama: 'Barabai', total: 0, percentage: 0, topDesa: '-' };
-  const totalPointsCount = allMapPoints.length;
-  const totalPenindakan = allMapPoints.filter(p => p.sourceType === 'penindakan').length;
-  const totalPelanggaran = allMapPoints.filter(p => p.sourceType === 'pelanggaran').length;
+  const topArea = areaRanking[0] || { nama: 'Barabai', total: 0, percentage: 0 };
 
   // =========================================================================
   // 5. FILTER TITIK SPASIAL AKTIF
@@ -465,18 +559,17 @@ export default function PetaSpasialHST({
         item.kecamatan.toLowerCase() === selectedKecamatan.toLowerCase();
       const matchDesa = selectedDesa === 'semua' || 
         (item.desa && item.desa.toLowerCase() === selectedDesa.toLowerCase());
-      const matchTindakan = selectedTindakan === 'semua' || 
-        item.tindakLanjut.toLowerCase().includes(selectedTindakan.toLowerCase());
       const matchSearch = !searchQuery || 
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.lokasi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.subtitle && item.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.lokasi && item.lokasi.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.alamat && item.alamat.toLowerCase().includes(searchQuery.toLowerCase())) ||
         item.desa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.kecamatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.perda.toLowerCase().includes(searchQuery.toLowerCase());
+        item.kecamatan.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchSource && matchKec && matchDesa && matchTindakan && matchSearch;
+      return matchSource && matchKec && matchDesa && matchSearch;
     });
-  }, [allMapPoints, selectedSource, selectedKecamatan, selectedDesa, selectedTindakan, searchQuery]);
+  }, [allMapPoints, selectedSource, selectedKecamatan, selectedDesa, searchQuery]);
 
   // =========================================================================
   // 6. INISIALISASI PETA LEAFLET (Fokus Hulu Sungai Tengah)
@@ -485,27 +578,25 @@ export default function PetaSpasialHST({
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      // Inisialisasi peta berfokus penuh pada Hulu Sungai Tengah
       const map = L.map(mapContainerRef.current, {
         center: HST_CENTER,
         zoom: 11,
         zoomControl: true,
         maxBounds: [
-          [-3.1000, 114.8000],
-          [-2.2000, 116.2000]
+          [-2.8500, 115.0800],
+          [-2.3800, 115.9000]
         ],
-        minZoom: 9
+        maxBoundsViscosity: 1.0, // KUNCI KETAT wilayah Kabupaten Hulu Sungai Tengah
+        minZoom: 10
       });
 
-      // Fit bounds langsung ke seluruh Kabupaten Hulu Sungai Tengah
       map.fitBounds(HST_BOUNDS, { padding: [15, 15] });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors | Satpol PP Kab. Hulu Sungai Tengah',
+        attribution: '&copy; OpenStreetMap contributors | Satpol PP & Linmas Pemkab HST',
         maxZoom: 18
       }).addTo(map);
 
-      // Layer groups terpisah
       kecamatanLayerRef.current = L.layerGroup().addTo(map);
       desaLayerRef.current = L.layerGroup().addTo(map);
       markersLayerRef.current = L.layerGroup().addTo(map);
@@ -522,7 +613,7 @@ export default function PetaSpasialHST({
   }, []);
 
   // =========================================================================
-  // 7. RENDER LAYER BATAS KECAMATAN DARI map.json DENGAN GRADASI WARNA
+  // 7. RENDER LAYER BATAS KECAMATAN DENGAN GRADASI
   // =========================================================================
   useEffect(() => {
     if (!mapInstanceRef.current || !kecamatanLayerRef.current || !geoKecamatanData) return;
@@ -539,31 +630,30 @@ export default function PetaSpasialHST({
         const stat = kecStatsMap.get(kecNama);
         const count = stat ? stat.total : 0;
         const isSelected = selectedKecamatan !== 'semua' && selectedKecamatan.toLowerCase() === kecNama;
+        const g = getWarnaAktivitasWilayah(count);
 
-        if (useGradasi) {
-          const g = getGradasiColor(count, gradasiPalette);
+        if (isSelected) {
           return {
-            color: isSelected ? '#0F2A4A' : g.border,
-            weight: isSelected ? 3.5 : 2,
-            opacity: isSelected ? 1 : 0.85,
-            fillColor: isSelected ? '#F0B429' : g.fill,
-            fillOpacity: isSelected ? 0.70 : g.opacity,
-            dashArray: isSelected ? null : (count === 0 ? '4, 4' : null)
+            color: '#0F2A4A',
+            weight: 3.5,
+            opacity: 1,
+            fillColor: '#F0B429',
+            fillOpacity: 0.70,
+            dashArray: null
           };
         }
 
         return {
-          color: isSelected ? '#0F2A4A' : '#1E3A8A',
-          weight: isSelected ? 3 : 1.5,
-          opacity: isSelected ? 1 : 0.7,
-          fillColor: isSelected ? '#3B82F6' : '#0F2A4A',
-          fillOpacity: isSelected ? 0.08 : 0.02,
-          dashArray: isSelected ? null : '4, 4'
+          color: g.border,
+          weight: 2,
+          opacity: 0.85,
+          fillColor: g.fill,
+          fillOpacity: g.opacity,
+          dashArray: count === 0 ? '4, 4' : null
         };
       },
       onEachFeature: (feature, layer) => {
         const rawNama = feature.properties?.nama || '';
-        // Konversi ke Title Case: BARABAI -> Barabai
         const titleNama = rawNama
           .toLowerCase()
           .split(' ')
@@ -575,66 +665,60 @@ export default function PetaSpasialHST({
 
         const stat = kecStatsMap.get(rawNama.toLowerCase());
         const count = stat ? stat.total : 0;
-        const g = getGradasiColor(count, gradasiPalette);
+        const g = getWarnaAktivitasWilayah(count);
 
-        // Tooltip Kecamatan Interaktif
         layer.bindTooltip(`
-          <div style="font-family: 'Plus Jakarta Sans', sans-serif; text-align: left; padding: 4px; min-width: 160px;">
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; text-align: left; padding: 4px; min-width: 150px;">
             <div style="font-weight: 800; color: #0F2A4A; font-size: 12px;">Kecamatan ${titleNama}</div>
-            ${useGradasi ? `
-              <div style="display: flex; align-items: center; gap: 5px; margin-top: 3px;">
-                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background-color: ${g.fill}; border: 1.5px solid ${g.border};"></span>
-                <span style="font-size: 10.5px; font-weight: 800; color: ${g.textColor};">${g.label}</span>
-              </div>
-            ` : ''}
-            <div style="font-size: 9.5px; color: #475569; margin-top: 3px; padding-top: 3px; border-top: 1px dashed #CBD5E1;">
-              🚨 Penindakan: <b>${stat?.penindakanCount || 0}</b> &bull; ⚖️ Pelanggaran: <b>${stat?.pelanggaranCount || 0}</b>
+            <div style="font-size: 10px; color: #475569; margin-top: 2px;">
+              Poskamling: <b>${stat?.posCount || 0}</b> | Patroli: <b>${stat?.patCount || 0}</b> | Linmas: <b>${stat?.linCount || 0}</b>
             </div>
-            <div style="font-size: 9px; color: #0284C7; font-weight: 700; margin-top: 2px;">Klik untuk zoom & filter kecamatan</div>
+            <div style="display: flex; align-items: center; gap: 5px; margin-top: 4px;">
+              <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background-color: ${g.fill}; border: 1px solid ${g.border};"></span>
+              <span style="font-size: 10px; font-weight: 800; color: ${count > 0 ? '#065F46' : '#64748B'};">
+                ${count > 0 ? `Total: ${count} Data (Pos, Patroli & Linmas)` : 'Belum Ada Data'}
+              </span>
+            </div>
+            <div style="font-size: 9px; color: #2563EB; font-weight: 600; margin-top: 4px;">Klik untuk fokus wilayah</div>
           </div>
         `, {
           sticky: true,
-          direction: 'center',
-          className: 'custom-leaflet-tooltip'
+          direction: 'top',
+          className: 'custom-kec-tooltip'
         });
 
-        // Hover Effect
         layer.on({
           mouseover: (e) => {
             const l = e.target;
-            const isSelected = selectedKecamatan !== 'semua' && selectedKecamatan.toLowerCase() === titleNama.toLowerCase();
+            const isSelected = selectedKecamatan !== 'semua' && selectedKecamatan.toLowerCase() === rawNama.toLowerCase();
             if (!isSelected) {
               l.setStyle({
                 weight: 3,
-                fillOpacity: useGradasi ? Math.min(g.opacity + 0.2, 0.85) : 0.25,
+                fillOpacity: Math.min(g.opacity + 0.25, 0.95),
                 color: '#0F2A4A'
               });
             }
           },
           mouseout: (e) => {
             const l = e.target;
-            const isSelected = selectedKecamatan !== 'semua' && selectedKecamatan.toLowerCase() === titleNama.toLowerCase();
+            const isSelected = selectedKecamatan !== 'semua' && selectedKecamatan.toLowerCase() === rawNama.toLowerCase();
             if (!isSelected) {
               kecGeoJsonLayer.resetStyle(l);
             }
           },
           click: (e) => {
             L.DomEvent.stopPropagation(e);
-            setSelectedKecamatan(titleNama);
-            setSelectedDesa('semua');
-            if (mapInstanceRef.current) {
-              mapInstanceRef.current.fitBounds(layer.getBounds(), { padding: [30, 30], maxZoom: 14 });
-            }
+            handleSelectKecamatan(titleNama);
           }
         });
       }
     });
 
     kecamatanLayerRef.current.addLayer(kecGeoJsonLayer);
-  }, [geoKecamatanData, selectedKecamatan, showKecamatanBorders, useGradasi, gradasiPalette, kecStatsMap]);
+  }, [geoKecamatanData, selectedKecamatan, showKecamatanBorders, kecStatsMap]);
 
   // =========================================================================
-  // 8. RENDER LAYER BATAS 169 DESA DARI desa_hst.geojson DENGAN GRADASI
+  // 8. RENDER LAYER BATAS DESA (169 DESA HST)
   // =========================================================================
   useEffect(() => {
     if (!mapInstanceRef.current || !desaLayerRef.current || !geoDesaData) return;
@@ -645,115 +729,67 @@ export default function PetaSpasialHST({
     if (!showDesaBorders) return;
 
     const desaGeoJsonLayer = L.geoJSON(geoDesaData, {
+      filter: (feature) => {
+        if (selectedKecamatan === 'semua') return true;
+        const wadm = feature.properties?.WADMKC;
+        return wadm && wadm.toLowerCase() === selectedKecamatan.toLowerCase();
+      },
       style: (feature) => {
-        const props = feature.properties || {};
-        const namaDesa = (props.NAMOBJ || '').toLowerCase();
-        const namaKec = (props.WADMKC || '').toLowerCase();
-
-        const isDesaSelected = selectedDesa !== 'semua' && selectedDesa.toLowerCase() === namaDesa;
-        const isKecSelected = selectedKecamatan !== 'semua' && selectedKecamatan.toLowerCase() === namaKec;
-
-        const fullKey = `${namaKec}_${namaDesa}`;
-        const dStat = desaStatsMap.get(fullKey) || desaStatsMap.get(namaDesa);
+        const rawDesa = feature.properties?.NAMOBJ || '';
+        const rawKec = feature.properties?.WADMKC || '';
+        const key = `${rawKec.toLowerCase().trim()}_${rawDesa.toLowerCase().trim()}`;
+        const dStat = desaStatsMap.get(key) || desaStatsMap.get(rawDesa.toLowerCase().trim());
         const count = dStat ? dStat.total : 0;
+        const isSelected = selectedDesa !== 'semua' && selectedDesa.toLowerCase() === rawDesa.toLowerCase();
+        const g = getWarnaAktivitasWilayah(count);
 
-        if (isDesaSelected) {
-          // Sorot penuh untuk Desa yang dipilih
+        if (isSelected) {
           return {
             color: '#0F2A4A',
-            weight: 3.5,
+            weight: 3,
             opacity: 1,
             fillColor: '#F0B429',
-            fillOpacity: 0.70
+            fillOpacity: 0.75,
+            dashArray: null
           };
         }
 
-        if (useGradasi) {
-          const g = getGradasiColor(count, gradasiPalette);
-
-          if (count > 0) {
-            // Desa yang ada kejadian: warna gradasi kontras
-            return {
-              color: isKecSelected ? '#0F2A4A' : g.border,
-              weight: isKecSelected ? 2.5 : 1.5,
-              opacity: isKecSelected ? 1 : 0.85,
-              fillColor: g.fill,
-              fillOpacity: Math.min(g.opacity + 0.1, 0.80),
-              dashArray: null
-            };
-          }
-
-          // Desa tanpa kejadian (0)
-          if (isKecSelected) {
-            return {
-              color: '#3B82F6',
-              weight: 1.5,
-              opacity: 0.7,
-              fillColor: '#93C5FD',
-              fillOpacity: 0.15,
-              dashArray: '2, 3'
-            };
-          }
-
-          return {
-            color: '#94A3B8',
-            weight: 0.8,
-            opacity: 0.5,
-            fillColor: '#F1F5F9',
-            fillOpacity: 0.08,
-            dashArray: '2, 2'
-          };
-        }
-
-        if (isKecSelected) {
-          // Desa-desa di dalam kecamatan yang dipilih
-          return {
-            color: '#2563EB',
-            weight: 1.5,
-            opacity: 0.8,
-            fillColor: '#3B82F6',
-            fillOpacity: 0.12,
-            dashArray: '2, 3'
-          };
-        }
-
-        // Tampilan default desa seluruh HST
         return {
-          color: '#94A3B8',
-          weight: 0.8,
-          opacity: 0.5,
-          fillColor: '#64748B',
-          fillOpacity: 0.03,
-          dashArray: '2, 2'
+          color: g.border,
+          weight: 1,
+          opacity: 0.75,
+          fillColor: g.fill,
+          fillOpacity: g.opacity,
+          dashArray: count === 0 ? '2, 3' : null
         };
       },
       onEachFeature: (feature, layer) => {
         const props = feature.properties || {};
         const namaDesa = props.NAMOBJ || 'Desa';
-        const namaKec = props.WADMKC || 'HST';
+        const namaKec = props.WADMKC || 'Kecamatan';
         const luasHa = Math.round((props.SHAPE_Area || 0) / 10000);
 
-        const key = `${namaKec.toLowerCase()}_${namaDesa.toLowerCase()}`;
+        const key = `${namaKec.toLowerCase().trim()}_${namaDesa.toLowerCase().trim()}`;
         desaFeaturesMapRef.current.set(key, layer);
-        desaFeaturesMapRef.current.set(namaDesa.toLowerCase(), layer);
+        desaFeaturesMapRef.current.set(namaDesa.toLowerCase().trim(), layer);
 
-        const dStat = desaStatsMap.get(key) || desaStatsMap.get(namaDesa.toLowerCase());
+        const dStat = desaStatsMap.get(key) || desaStatsMap.get(namaDesa.toLowerCase().trim());
         const dCount = dStat ? dStat.total : 0;
-        const dGradasi = getGradasiColor(dCount, gradasiPalette);
+        const dGradasi = getWarnaAktivitasWilayah(dCount);
 
-        // Tooltip informatif saat hover
         layer.bindTooltip(`
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; text-align: left; padding: 4px; min-width: 150px;">
             <div style="font-weight: 800; color: #0F2A4A; font-size: 11.5px;">Desa/Kel. ${namaDesa}</div>
             <div style="font-size: 10px; color: #475569;">Kec. ${namaKec} &bull; Luas: ${luasHa.toLocaleString('id-ID')} Ha</div>
-            ${useGradasi ? `
-              <div style="display: flex; align-items: center; gap: 5px; margin-top: 3px;">
-                <span style="display: inline-block; width: 9px; height: 9px; border-radius: 2px; background-color: ${dGradasi.fill}; border: 1px solid ${dGradasi.border};"></span>
-                <span style="font-size: 10px; font-weight: 800; color: ${dGradasi.textColor};">
-                  ${dCount > 0 ? `${dCount} Kejadian (${dGradasi.tier.toUpperCase()})` : 'Situasi Aman'}
-                </span>
-              </div>
-            ` : ''}
+            <div style="font-size: 10px; color: #334155; margin-top: 2px;">
+              Poskamling: <b>${dStat?.pos || 0}</b> | Patroli: <b>${dStat?.pat || 0}</b> | Linmas: <b>${dStat?.lin || 0}</b>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px; margin-top: 3px;">
+              <span style="display: inline-block; width: 9px; height: 9px; border-radius: 2px; background-color: ${dGradasi.fill}; border: 1px solid ${dGradasi.border};"></span>
+              <span style="font-size: 10px; font-weight: 800; color: ${dCount > 0 ? '#065F46' : '#64748B'};">
+                ${dCount > 0 ? `Total: ${dCount} Data (Pos, Patroli & Linmas)` : 'Belum Ada Data'}
+              </span>
+            </div>
             <div style="font-size: 9px; color: #0284C7; font-weight: 600; margin-top: 3px;">Klik untuk fokus wilayah desa</div>
           </div>
         `, {
@@ -762,7 +798,6 @@ export default function PetaSpasialHST({
           className: 'custom-desa-tooltip'
         });
 
-        // Hover Effect
         layer.on({
           mouseover: (e) => {
             const l = e.target;
@@ -770,7 +805,7 @@ export default function PetaSpasialHST({
             if (!isSelected) {
               l.setStyle({
                 weight: 2.5,
-                fillOpacity: useGradasi ? Math.min(dGradasi.opacity + 0.25, 0.9) : 0.25,
+                fillOpacity: Math.min(dGradasi.opacity + 0.25, 0.95),
                 color: '#0F2A4A'
               });
             }
@@ -795,51 +830,40 @@ export default function PetaSpasialHST({
     });
 
     desaLayerRef.current.addLayer(desaGeoJsonLayer);
-  }, [geoDesaData, selectedKecamatan, selectedDesa, showDesaBorders, useGradasi, gradasiPalette, desaStatsMap]);
+  }, [geoDesaData, selectedKecamatan, selectedDesa, showDesaBorders, desaStatsMap]);
 
   // =========================================================================
-  // 9. UPDATE MARKERS TITIK PENINDAKAN & PELANGGARAN
+  // 9. UPDATE MARKERS SPASIAL (POSKAMLING, PATROLI, SATLINMAS)
   // =========================================================================
   useEffect(() => {
     if (!mapInstanceRef.current || !markersLayerRef.current) return;
 
     markersLayerRef.current.clearLayers();
+    markersMapRef.current.clear();
 
     if (!showMarkers) return;
 
     filteredPoints.forEach((item) => {
-      // Tentukan warna & ikon marker berdasarkan tipe & tindakan
-      let colorHex = '#D97706'; // Amber default
-      let iconEmoji = '📍';
+      let colorHex = '#D97706';
+      let iconEmoji = '📻';
+      let pinBorder = 'white';
 
-      if (item.sourceType === 'penindakan') {
-        const t = (item.tindakLanjut || '').toLowerCase();
-        if (t.includes('penertiban')) {
-          colorHex = '#DC2626'; // Merah penertiban
-          iconEmoji = '🚨';
-        } else if (t.includes('pengawasan')) {
-          colorHex = '#0284C7'; // Biru pengawasan
-          iconEmoji = '👁️';
-        } else if (t.includes('pengamanan')) {
-          colorHex = '#D97706'; // Amber pengamanan
-          iconEmoji = '🛡️';
-        } else {
-          colorHex = '#EA580C'; // Oranye peneguran
-          iconEmoji = '⚠️';
-        }
+      if (item.sourceType === 'poskamling') {
+        colorHex = '#D97706'; // Amber Oranye
+        iconEmoji = '📻';
+        pinBorder = '#FDE68A';
+      } else if (item.sourceType === 'patroli') {
+        colorHex = '#059669'; // Emerald Green
+        iconEmoji = '🚓';
+        pinBorder = '#A7F3D0';
+      } else if (item.sourceType === 'satlinmas') {
+        colorHex = '#0F2A4A'; // Navy Pemkab
+        iconEmoji = '🛡️';
+        pinBorder = '#F0B429'; // Emas
       } else {
-        // Berkas Pelanggaran Perda
-        const s = (item.status || '').toLowerCase();
-        if (s.includes('sp3') || s.includes('eksekusi')) {
-          colorHex = '#991B1B'; // Merah tua
-          iconEmoji = '⚖️';
-        } else if (s.includes('selesai')) {
-          colorHex = '#059669'; // Hijau
-          iconEmoji = '✅';
-        } else {
-          colorHex = '#D97706'; // Kuning SP1/SP2
-          iconEmoji = '⚖️';
-        }
+        colorHex = '#DC2626'; // Penindakan
+        iconEmoji = '🚨';
+        pinBorder = '#FECACA';
       }
 
       // Marker kustom HTML Pin
@@ -848,76 +872,174 @@ export default function PetaSpasialHST({
         html: `
           <div style="
             background-color: ${colorHex};
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px solid white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 2px solid ${pinBorder};
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
           ">
-            <span style="transform: rotate(45deg); color: white; font-size: 12px; font-weight: bold;">${iconEmoji}</span>
+            <span style="transform: rotate(45deg); color: white; font-size: 14px; font-weight: bold; line-height: 1;">${iconEmoji}</span>
           </div>
         `,
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-        popupAnchor: [0, -30]
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
       });
 
       const marker = L.marker([item.lat, item.lng], { icon: customIcon });
 
-      // Isi Popup Informatif
-      const isPenindakan = item.sourceType === 'penindakan';
-      const personilBadges = (item.personil || [])
-        .map(p => `<span style="background: #EEF2F6; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; display: inline-block; margin-right: 3px; margin-bottom: 2px;">${p}</span>`)
-        .join('');
+      // POPUP HTML SESUAI TIPE DATA
+      let popupContent = '';
 
-      const popupHtml = `
-        <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; width: 250px; line-height: 1.4; text-align: left;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: ${isPenindakan ? '#FEF2F2; color: #DC2626; border: 1px solid #FECACA;' : '#EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;'}">
-              ${isPenindakan ? '🚨 Penindakan Trantibum' : '⚖️ Pelanggaran Perda'}
-            </span>
-            <span style="font-size: 10px; color: #64748B; font-weight: 600;">${item.tanggal}</span>
-          </div>
+      if (item.sourceType === 'poskamling') {
+        const fasChips = (item.fasilitas || []).slice(0, 4).map(f => 
+          `<span style="background: #FEF3C7; color: #92400E; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: 700; margin-right: 3px; margin-bottom: 2px; display: inline-block;">✓ ${f}</span>`
+        ).join('');
 
-          <div style="font-weight: 800; color: #0F2A4A; font-size: 13px; margin-bottom: 2px;">${item.title}</div>
-          
-          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 8px; border-radius: 8px; margin: 6px 0; font-size: 11px;">
-            <div style="color: #0F2A4A; font-weight: 700;">📍 Kec. ${item.kecamatan}${item.desa ? ', Desa ' + item.desa : ''}</div>
-            <div style="color: #475569; font-size: 10.5px; margin-top: 2px;">${item.lokasi || '-'}</div>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 6px;">
-            <span style="color: #64748B;">Tindakan / Status:</span>
-            <span style="font-weight: 700; color: ${colorHex};">${item.tindakLanjut} (${item.status})</span>
-          </div>
-
-          ${item.personil && item.personil.length > 0 ? `
-            <div style="margin-bottom: 6px;">
-              <div style="font-size: 10px; color: #64748B; font-weight: 700; margin-bottom: 2px;">Petugas Penangan:</div>
-              <div>${personilBadges}</div>
+        popupContent = `
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; width: 260px; line-height: 1.4; text-align: left;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
+                📻 POSKAMLING / POS RONDA
+              </span>
+              <span style="font-size: 10px; color: #059669; font-weight: 700;">RT ${item.rt} / RW ${item.rw}</span>
             </div>
-          ` : ''}
 
-          <div style="border-top: 1px solid #E2E8F0; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 10px; color: #64748B; font-family: monospace;">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}</span>
-            <a 
-              href="https://www.google.com/maps?q=${item.lat},${item.lng}" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style="color: #2563EB; font-size: 10.5px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"
-            >
-              Buka Maps ↗
-            </a>
+            <div style="font-weight: 800; color: #0F2A4A; font-size: 13px; margin-bottom: 2px;">${item.title}</div>
+            
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 8px; border-radius: 8px; margin: 6px 0; font-size: 11px;">
+              <div style="color: #0F2A4A; font-weight: 700;">📍 Kec. ${item.kecamatan}, Desa ${item.desa}</div>
+              <div style="color: #475569; font-size: 10px; margin-top: 2px;">${item.alamat || '-'}</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px;">
+              <span style="color: #64748B;">Operasional:</span>
+              <span style="font-weight: 700; color: #D97706;">${item.status}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 6px;">
+              <span style="color: #64748B;">Kondisi Fisik:</span>
+              <span style="font-weight: 700; color: #0F2A4A;">${item.kondisi}</span>
+            </div>
+
+            <div style="border-top: 1px dashed #CBD5E1; padding-top: 4px; margin-bottom: 6px;">
+              <div style="font-size: 10px; color: #475569;">Ketua: <b>${item.namaKetua}</b> (${item.kontakWa})</div>
+              <div style="font-size: 10px; color: #059669; font-weight: 700; margin-top: 2px;">👥 ${item.personilCount} Personel Ronda Warga</div>
+            </div>
+
+            ${fasChips ? `
+              <div style="margin-bottom: 6px;">
+                <div style="font-size: 9.5px; color: #64748B; font-weight: 700; margin-bottom: 2px;">Fasilitas Pos:</div>
+                <div>${fasChips}</div>
+              </div>
+            ` : ''}
+
+            <div style="border-top: 1px solid #E2E8F0; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 10px; color: #64748B; font-family: monospace;">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}</span>
+              <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" rel="noopener noreferrer" style="color: #2563EB; font-size: 10.5px; font-weight: 700; text-decoration: none;">
+                Buka Maps ↗
+              </a>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      } else if (item.sourceType === 'patroli') {
+        popupContent = `
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; width: 260px; line-height: 1.4; text-align: left;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0;">
+                🚓 PATROLI LAPANGAN GPS LIVE
+              </span>
+              <span style="font-size: 10px; color: #64748B; font-weight: 600;">${item.waktu}</span>
+            </div>
 
-      marker.bindPopup(popupHtml);
+            <div style="font-weight: 800; color: #0F2A4A; font-size: 13px; margin-bottom: 2px;">${item.title}</div>
+            
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 8px; border-radius: 8px; margin: 6px 0; font-size: 11px;">
+              <div style="color: #0F2A4A; font-weight: 700;">📍 Kec. ${item.kecamatan}${item.desa ? ', Desa ' + item.desa : ''}</div>
+              <div style="color: #475569; font-size: 10px; margin-top: 2px;">${item.lokasi || '-'}</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px;">
+              <span style="color: #64748B;">Situasi:</span>
+              <span style="font-weight: 800; color: #059669;">${item.status}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 6px;">
+              <span style="color: #64748B;">Petugas Pelapor:</span>
+              <span style="font-weight: 700; color: #0F2A4A;">${item.petugasPelapor} (${item.personilCount} Org)</span>
+            </div>
+
+            ${item.hasil ? `
+              <div style="background: #ECFDF5; border-left: 3px solid #059669; padding: 4px 6px; font-size: 10px; color: #064E3B; margin-bottom: 6px; border-radius: 0 4px 4px 0;">
+                <b>Temuan:</b> ${item.hasil.length > 90 ? item.hasil.slice(0, 90) + '...' : item.hasil}
+              </div>
+            ` : ''}
+
+            <div style="border-top: 1px solid #E2E8F0; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 10px; color: #64748B; font-family: monospace;">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}</span>
+              <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" rel="noopener noreferrer" style="color: #2563EB; font-size: 10.5px; font-weight: 700; text-decoration: none;">
+                Buka Maps ↗
+              </a>
+            </div>
+          </div>
+        `;
+      } else if (item.sourceType === 'satlinmas') {
+        popupContent = `
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; width: 260px; line-height: 1.4; text-align: left;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: #0F2A4A; color: #F0B429; border: 1px solid #F0B429;">
+                🛡️ ANGGOTA SATLINMAS
+              </span>
+              <span style="font-size: 10px; color: #059669; font-weight: 700;">${item.status}</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin: 6px 0;">
+              ${item.pasFoto ? `
+                <img src="${item.pasFoto}" alt="${item.title}" style="width: 44px; height: 54px; object-fit: cover; border-radius: 6px; border: 2px solid #F0B429;" />
+              ` : ''}
+              <div>
+                <div style="font-weight: 800; color: #0F2A4A; font-size: 13px; line-height: 1.2;">${item.title}</div>
+                <div style="font-size: 10px; color: #64748B; font-mono; margin-top: 2px;">Reg: ${item.noRegistrasi}</div>
+                <div style="font-size: 9.5px; color: #475569; font-mono;">NIK: ${item.nik}</div>
+              </div>
+            </div>
+
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 8px; border-radius: 8px; margin: 6px 0; font-size: 11px;">
+              <div style="color: #0F2A4A; font-weight: 700;">Penugasan: Kec. ${item.kecamatan}, Desa ${item.desa}</div>
+              <div style="color: #475569; font-size: 10px; margin-top: 2px;">${item.alamat || '-'}</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 6px;">
+              <span style="color: #64748B;">No. Handphone:</span>
+              <span style="font-weight: 700; color: #0F2A4A;">${item.noHp}</span>
+            </div>
+
+            <div style="border-top: 1px solid #E2E8F0; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 10px; color: #64748B; font-family: monospace;">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}</span>
+              <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" rel="noopener noreferrer" style="color: #2563EB; font-size: 10.5px; font-weight: 700; text-decoration: none;">
+                Buka Maps ↗
+              </a>
+            </div>
+          </div>
+        `;
+      } else {
+        // Penindakan
+        popupContent = `
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; width: 250px; line-height: 1.4; text-align: left;">
+            <div style="font-weight: 800; color: #0F2A4A; font-size: 13px; margin-bottom: 2px;">${item.title}</div>
+            <div style="font-size: 11px; color: #475569;">📍 Kec. ${item.kecamatan}, Desa ${item.desa}</div>
+            <div style="font-size: 10px; color: #DC2626; font-weight: 700; margin-top: 4px;">Status: ${item.status}</div>
+          </div>
+        `;
+      }
+
+      marker.bindPopup(popupContent);
       markersLayerRef.current.addLayer(marker);
+      markersMapRef.current.set(item.id, marker);
     });
   }, [filteredPoints, showMarkers]);
 
@@ -925,7 +1047,6 @@ export default function PetaSpasialHST({
   // 10. HANDLERS NAVIGASI & ZOOMING PETA
   // =========================================================================
 
-  // Handle Pilih Kecamatan
   const handleSelectKecamatan = (kecNama) => {
     setSelectedKecamatan(kecNama);
     setSelectedDesa('semua');
@@ -937,12 +1058,10 @@ export default function PetaSpasialHST({
       return;
     }
 
-    // Cek apakah ada layer polygon batas kecamatan
     const targetLayer = kecFeaturesMapRef.current.get(kecNama.toLowerCase());
     if (targetLayer) {
       mapInstanceRef.current.fitBounds(targetLayer.getBounds(), { padding: [30, 30], maxZoom: 14, duration: 1.2 });
     } else {
-      // Fallback ke koordinat pusat kecamatan
       const selectedKecObj = wilayahList.find(k => k.nama.toLowerCase() === kecNama.toLowerCase());
       if (selectedKecObj && selectedKecObj.lat && selectedKecObj.lng) {
         mapInstanceRef.current.flyTo([selectedKecObj.lat, selectedKecObj.lng], 13, { duration: 1.2 });
@@ -950,82 +1069,93 @@ export default function PetaSpasialHST({
     }
   };
 
-  // Handle Pilih Desa
+  useEffect(() => {
+    if (assignedKecamatan) {
+      setSelectedKecamatan(assignedKecamatan);
+      if (mapInstanceRef.current) {
+        handleSelectKecamatan(assignedKecamatan);
+      }
+    }
+  }, [assignedKecamatan]);
+
   const handleSelectDesa = (desaNama) => {
     setSelectedDesa(desaNama);
 
     if (!mapInstanceRef.current) return;
 
     if (desaNama === 'semua') {
-      // Jika membatalkan desa, kembali fokus ke kecamatan terpilih atau seluruh HST
       if (selectedKecamatan !== 'semua') {
-        const kecLayer = kecFeaturesMapRef.current.get(selectedKecamatan.toLowerCase());
-        if (kecLayer) {
-          mapInstanceRef.current.fitBounds(kecLayer.getBounds(), { padding: [30, 30], maxZoom: 14, duration: 1 });
-        }
+        handleSelectKecamatan(selectedKecamatan);
       } else {
-        mapInstanceRef.current.fitBounds(HST_BOUNDS, { padding: [15, 15], duration: 1 });
+        mapInstanceRef.current.fitBounds(HST_BOUNDS, { padding: [15, 15] });
       }
       return;
     }
 
-    // Cari layer polygon desa yang sesuai
-    let targetKey = `${selectedKecamatan.toLowerCase()}_${desaNama.toLowerCase()}`;
-    let desaLayer = desaFeaturesMapRef.current.get(targetKey) || desaFeaturesMapRef.current.get(desaNama.toLowerCase());
-
-    if (desaLayer) {
-      mapInstanceRef.current.fitBounds(desaLayer.getBounds(), { padding: [40, 40], maxZoom: 15, duration: 1.2 });
-      
-      // Jika kecamatan belum terpilih, sinkronkan otomatis
-      if (selectedKecamatan === 'semua' && desaLayer.feature?.properties?.WADMKC) {
-        setSelectedKecamatan(desaLayer.feature.properties.WADMKC);
-      }
+    const key = selectedKecamatan !== 'semua' ? `${selectedKecamatan.toLowerCase().trim()}_${desaNama.toLowerCase().trim()}` : desaNama.toLowerCase().trim();
+    const targetLayer = desaFeaturesMapRef.current.get(key) || desaFeaturesMapRef.current.get(desaNama.toLowerCase().trim());
+    if (targetLayer) {
+      mapInstanceRef.current.fitBounds(targetLayer.getBounds(), { padding: [40, 40], maxZoom: 15, duration: 1 });
     }
   };
 
-  // Fokus Penuh Seluruh Kabupaten HST
   const handleFocusHST = () => {
     setSelectedKecamatan('semua');
     setSelectedDesa('semua');
+    setSearchQuery('');
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.fitBounds(HST_BOUNDS, { padding: [15, 15], duration: 1.2 });
+      mapInstanceRef.current.fitBounds(HST_BOUNDS, { padding: [15, 15], duration: 1 });
     }
   };
 
-  // Fokus Ibukota Barabai
   const handleFocusBarabai = () => {
-    handleSelectKecamatan('Barabai');
+    setSelectedKecamatan('Barabai');
+    setSelectedDesa('semua');
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo(BARABAI_CENTER, 14, { duration: 1.2 });
+    }
+  };
+
+  const handleFlyToPoint = (item) => {
+    if (!mapInstanceRef.current) return;
+    mapInstanceRef.current.flyTo([item.lat, item.lng], 16, { duration: 1 });
+    const marker = markersMapRef.current.get(item.id);
+    if (marker) {
+      setTimeout(() => {
+        marker.openPopup();
+      }, 1000);
+    }
   };
 
   return (
     <div className="space-y-4">
       {/* ========================================================================= */}
-      {/* 1. EXECUTIVE AREA INSIGHT BANNER */}
+      {/* 1. TOP HEADER BANNER (PETA DIGITAL LINDUNGMAS HST) */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-[#0F2A4A] via-[#14365D] to-[#1E3A8A] text-white p-5 rounded-2xl shadow-md border border-slate-700/50 relative overflow-hidden">
-        {/* Subtle Background Pattern */}
-        <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center pr-6">
-          <Trophy className="w-48 h-48 text-[#F0B429]" />
-        </div>
+      <div className="bg-gradient-to-r from-[#0F2A4A] via-[#14365D] to-[#0A1A2E] rounded-2xl p-5 sm:p-6 text-white shadow-lg border border-slate-700/50 relative overflow-hidden">
+        <div 
+          className="absolute inset-0 pointer-events-none opacity-10"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 50% 50%, #ffffff 1px, transparent 1px)',
+            backgroundSize: '16px 16px'
+          }}
+        />
 
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#F0B429] text-[#0F2A4A] flex items-center gap-1.5 shadow-xs">
-                  <Trophy className="w-3.5 h-3.5" />
-                  ANALISIS SPASIAL KABUPATEN HULU SUNGAI TENGAH
+                  <MapPin className="w-3.5 h-3.5" />
+                  PETA DIGITAL LINDUNGMAS HST
                 </span>
                 <span className="text-xs text-slate-300 font-medium">11 Kecamatan &bull; 169 Desa/Kelurahan</span>
               </div>
-              <h2 className="text-lg md:text-xl font-extrabold text-white mt-1 tracking-tight flex items-center gap-2">
-                <span>Area Pelanggaran & Penindakan Terbanyak:</span>
-                <span className="text-[#F0B429] underline decoration-[#F0B429]/40 underline-offset-4">
-                  Kecamatan {topArea.nama}
-                </span>
+              <h2 className="text-lg md:text-xl font-extrabold text-white mt-1.5 tracking-tight flex items-center gap-2">
+                <span>Peta Digital Sebaran Poskamling, Satlinmas & Patroli</span>
               </h2>
-              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                Peta terintegrasi dengan data spasial poligon resmi <b>Kabupaten Hulu Sungai Tengah</b>. Memungkinkan pimpinan dan petugas penegak Perda melakukan seleksi presisi hingga level <b>Desa / Kelurahan</b> untuk menentukan penempatan patroli trantibum.
+              <p className="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
+                Sistem Informasi Geospasial (GIS) terpadu Kabupaten Hulu Sungai Tengah. Memetakan lokasi fisik Poskamling (Pos Ronda), persebaran anggota Satlinmas penugasan desa, dan rekam patroli lapangan dengan koordinat GPS akurat.
               </p>
             </div>
 
@@ -1042,11 +1172,11 @@ export default function PetaSpasialHST({
               </button>
               <button
                 type="button"
-                onClick={() => handleSelectKecamatan(topArea.nama)}
+                onClick={handleFocusBarabai}
                 className="px-4 py-2.5 bg-[#F0B429] hover:bg-[#d99f1f] text-[#0F2A4A] text-xs font-extrabold rounded-xl flex items-center gap-2 shadow-sm transition-transform active:scale-95 cursor-pointer"
               >
-                <ShieldAlert className="w-4 h-4" />
-                <span>Fokus Prioritas ({topArea.nama})</span>
+                <Building2 className="w-4 h-4" />
+                <span>Pusat Barabai</span>
               </button>
             </div>
           </div>
@@ -1054,42 +1184,42 @@ export default function PetaSpasialHST({
           {/* 4 Mini KPI Indicator Chips */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10 text-xs">
             <div className="bg-white/10 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-red-500/20 text-red-300 flex items-center justify-center font-bold text-base shrink-0">
-                🚨
+              <div className="w-9 h-9 rounded-lg bg-amber-500/25 text-[#F0B429] flex items-center justify-center font-bold text-base shrink-0">
+                📻
               </div>
               <div>
-                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Penindakan Trantibum</span>
-                <span className="text-sm sm:text-base font-extrabold text-white font-mono">{totalPenindakan} Titik Lapangan</span>
+                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Data Poskamling</span>
+                <span className="text-sm sm:text-base font-extrabold text-white font-mono">{totalPoskamling} Pos Ronda Aktif</span>
               </div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/20 text-[#F0B429] flex items-center justify-center font-bold text-base shrink-0">
-                ⚖️
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/25 text-emerald-300 flex items-center justify-center font-bold text-base shrink-0">
+                🚓
               </div>
               <div>
-                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Pelanggaran Perda</span>
-                <span className="text-sm sm:text-base font-extrabold text-white font-mono">{totalPelanggaran} Kasus BAP</span>
+                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Kegiatan Patroli</span>
+                <span className="text-sm sm:text-base font-extrabold text-white font-mono">{totalPatroli} Laporan GPS</span>
               </div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center font-bold text-base shrink-0">
-                🏘️
+              <div className="w-9 h-9 rounded-lg bg-blue-500/25 text-blue-300 flex items-center justify-center font-bold text-base shrink-0">
+                🛡️
               </div>
               <div>
-                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Batas Wilayah Desa</span>
-                <span className="text-sm sm:text-base font-extrabold text-white font-mono">169 Desa / Kel.</span>
+                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Data Satlinmas</span>
+                <span className="text-sm sm:text-base font-extrabold text-white font-mono">{totalSatlinmas} Anggota Terdata</span>
               </div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-base shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-purple-500/25 text-purple-300 flex items-center justify-center font-bold text-base shrink-0">
                 🗺️
               </div>
               <div>
-                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Total Titik Terpetakan</span>
-                <span className="text-sm sm:text-base font-extrabold text-white font-mono">{totalPointsCount} Koordinat</span>
+                <span className="text-[10px] text-slate-300 uppercase tracking-wider font-bold block">Total Titik Spasial</span>
+                <span className="text-sm sm:text-base font-extrabold text-white font-mono">{allMapPoints.length} Titik Terpetakan</span>
               </div>
             </div>
           </div>
@@ -1097,12 +1227,12 @@ export default function PetaSpasialHST({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. TOP CONTROLLER: HIERARCHICAL SELECTOR & FILTER BAR */}
+      {/* 2. TOP CONTROLLER: SOURCE TABS & FILTER BAR */}
       {/* ========================================================================= */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-        {/* Row 1: Source Selector + Layer Toggles */}
+        {/* Row 1: Source Tabs + Layer Toggles */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          {/* Source Tabs */}
+          {/* Source Tabs: Satlinmas, Poskamling, Patroli */}
           <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
             <button
               type="button"
@@ -1117,31 +1247,42 @@ export default function PetaSpasialHST({
             </button>
             <button
               type="button"
-              onClick={() => setSelectedSource('penindakan')}
+              onClick={() => setSelectedSource('poskamling')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                selectedSource === 'penindakan'
-                  ? 'bg-red-600 text-white shadow-xs'
+                selectedSource === 'poskamling'
+                  ? 'bg-[#D97706] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span>🚨 Penindakan ({totalPenindakan})</span>
+              <span>📻 Data Poskamling ({totalPoskamling})</span>
             </button>
             <button
               type="button"
-              onClick={() => setSelectedSource('pelanggaran')}
+              onClick={() => setSelectedSource('patroli')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                selectedSource === 'pelanggaran'
-                  ? 'bg-[#0F2A4A] text-white shadow-xs'
+                selectedSource === 'patroli'
+                  ? 'bg-[#059669] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span>⚖️ Pelanggaran Perda ({totalPelanggaran})</span>
+              <span>🚓 Kegiatan Patroli ({totalPatroli})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSource('satlinmas')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                selectedSource === 'satlinmas'
+                  ? 'bg-[#0F2A4A] text-[#F0B429] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🛡️ Data Satlinmas ({totalSatlinmas})</span>
             </button>
           </div>
 
           {/* Layer Visibility Toggles */}
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Layer Poligon:</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Poligon:</span>
             
             <button
               type="button"
@@ -1174,72 +1315,59 @@ export default function PetaSpasialHST({
               onClick={() => setShowMarkers(!showMarkers)}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
                 showMarkers
-                  ? 'bg-red-50 text-red-700 border-red-300'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                   : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full ${showMarkers ? 'bg-red-600' : 'bg-slate-300'}`}></span>
-              <span>Titik Kejadian</span>
+              <span className={`w-2 h-2 rounded-full ${showMarkers ? 'bg-emerald-600' : 'bg-slate-300'}`}></span>
+              <span>Titik Pin</span>
             </button>
-
-            {/* SEPARATOR */}
-            <div className="h-5 w-px bg-slate-200 hidden sm:block mx-1"></div>
-
-            {/* TOGGLE GRADASI WARNA SPASIAL */}
-            <button
-              type="button"
-              onClick={() => setUseGradasi(!useGradasi)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                useGradasi
-                  ? 'bg-gradient-to-r from-emerald-50 via-amber-50 to-rose-50 text-[#0F2A4A] border-amber-300 shadow-2xs'
-                  : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
-              }`}
-              title="Aktifkan pewarnaan poligon menggunakan gradasi kepadatan kejadian (Choropleth)"
-            >
-              <Palette className={`w-3.5 h-3.5 ${useGradasi ? 'text-amber-600' : 'text-slate-400'}`} />
-              <span>Gradasi Spasial: <b>{useGradasi ? 'Aktif' : 'Mati'}</b></span>
-            </button>
-
-            {/* PILIHAN PALET WARNA GRADASI */}
-            {useGradasi && (
-              <select
-                value={gradasiPalette}
-                onChange={(e) => setGradasiPalette(e.target.value)}
-                className="px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-slate-300 bg-white text-slate-700 outline-hidden cursor-pointer"
-                title="Pilih tema palet gradasi warna"
-              >
-                <option value="trantibum">Palet: Trantibum (Hijau ➜ Merah)</option>
-                <option value="spektrum_satpol">Palet: Spektrum (Biru ➜ Emas)</option>
-              </select>
-            )}
           </div>
         </div>
 
-        {/* Row 2: Dual Hierarchical Dropdowns (Kecamatan & Desa) + Tindakan Filter */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        {/* Row 2: Hierarchical Dropdowns (Kecamatan & Desa) + Search */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {/* SELECTOR 1: KECAMATAN */}
           <div>
-            <label className="block text-[11px] font-bold text-[#0F2A4A] mb-1">
-              📍 1. Pilih Kecamatan (HST):
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[11px] font-bold text-[#0F2A4A]">
+                📍 1. Filter Kecamatan (HST):
+              </label>
+              {assignedKecamatan && (
+                <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                  Terkunci (Operator)
+                </span>
+              )}
+            </div>
             <select
               value={selectedKecamatan}
+              disabled={!!assignedKecamatan}
               onChange={(e) => handleSelectKecamatan(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden cursor-pointer"
+              className={`w-full px-3 py-2 text-xs font-bold rounded-xl border outline-hidden ${
+                assignedKecamatan
+                  ? 'bg-blue-50 border-blue-200 text-blue-900 cursor-not-allowed font-extrabold'
+                  : 'bg-white border-slate-300 text-slate-800 focus:ring-2 focus:ring-[#0F2A4A] cursor-pointer'
+              }`}
             >
-              <option value="semua">Semua Kecamatan (11 HST)</option>
-              {areaRanking.map(k => (
-                <option key={k.id} value={k.nama}>
-                  Kec. {k.nama} ({k.total} Titik {k.nama === topArea.nama ? '— Terbanyak #1' : ''})
-                </option>
-              ))}
+              {assignedKecamatan ? (
+                <option value={assignedKecamatan}>Kec. {assignedKecamatan} (Wilayah Binaan Operator)</option>
+              ) : (
+                <>
+                  <option value="semua">Semua Kecamatan (11 HST)</option>
+                  {areaRanking.map(k => (
+                    <option key={k.id} value={k.nama}>
+                      Kec. {k.nama} ({k.total} Titik Terdata)
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
 
           {/* SELECTOR 2: DESA / KELURAHAN */}
           <div>
             <label className="block text-[11px] font-bold text-[#0F2A4A] mb-1 flex items-center justify-between">
-              <span>🏘️ 2. Pilih Desa / Kelurahan:</span>
+              <span>🏘️ 2. Filter Desa / Kelurahan:</span>
               <span className="text-[10px] text-slate-400 font-semibold font-mono">
                 {availableDesaList.length} Wilayah
               </span>
@@ -1260,33 +1388,15 @@ export default function PetaSpasialHST({
             </select>
           </div>
 
-          {/* SELECTOR 3: JENIS TINDAKAN */}
+          {/* SEARCH BOX */}
           <div>
             <label className="block text-[11px] font-bold text-[#0F2A4A] mb-1">
-              🛡️ 3. Jenis Tindakan:
-            </label>
-            <select
-              value={selectedTindakan}
-              onChange={(e) => setSelectedTindakan(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden cursor-pointer"
-            >
-              <option value="semua">Semua Jenis Tindakan</option>
-              <option value="Penertiban">Penertiban Lapangan</option>
-              <option value="Pengawasan">Pengawasan Perizinan</option>
-              <option value="Pengamanan">Pengamanan Wilayah</option>
-              <option value="Peneguran">Peneguran / Klarifikasi</option>
-            </select>
-          </div>
-
-          {/* SEARCH BOX & RESET */}
-          <div>
-            <label className="block text-[11px] font-bold text-[#0F2A4A] mb-1">
-              🔍 4. Cari Lokasi / Pelanggar:
+              🔍 3. Cari Pos / Anggota / Patroli:
             </label>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Cari desa, jalan, pasar..."
+                placeholder="Cari nama poskamling, anggota linmas, jalan..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden"
@@ -1305,18 +1415,14 @@ export default function PetaSpasialHST({
           </div>
         </div>
 
-        {/* Selected Filter Summary Badge / Clearer */}
-        {(selectedKecamatan !== 'semua' || selectedDesa !== 'semua' || selectedTindakan !== 'semua' || searchQuery) && (
+        {/* Selected Filter Summary Badge */}
+        {(selectedKecamatan !== 'semua' || selectedDesa !== 'semua' || searchQuery) && (
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
             <span className="text-[11px] font-bold text-slate-500">Filter Aktif:</span>
             {selectedKecamatan !== 'semua' && (
               <span className="px-2.5 py-1 rounded-full bg-blue-100 text-[#0F2A4A] font-bold text-[11px] flex items-center gap-1">
                 <span>Kec. {selectedKecamatan}</span>
-                <button 
-                  type="button" 
-                  onClick={() => handleSelectKecamatan('semua')}
-                  className="hover:text-red-600"
-                >
+                <button type="button" onClick={() => handleSelectKecamatan('semua')} className="hover:text-red-600">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -1324,23 +1430,7 @@ export default function PetaSpasialHST({
             {selectedDesa !== 'semua' && (
               <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px] flex items-center gap-1 border border-amber-300">
                 <span>Desa {selectedDesa}</span>
-                <button 
-                  type="button" 
-                  onClick={() => handleSelectDesa('semua')}
-                  className="hover:text-red-600"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            {selectedTindakan !== 'semua' && (
-              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold text-[11px] flex items-center gap-1">
-                <span>Tindakan: {selectedTindakan}</span>
-                <button 
-                  type="button" 
-                  onClick={() => setSelectedTindakan('semua')}
-                  className="hover:text-red-600"
-                >
+                <button type="button" onClick={() => handleSelectDesa('semua')} className="hover:text-red-600">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -1348,11 +1438,7 @@ export default function PetaSpasialHST({
             {searchQuery && (
               <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold text-[11px] flex items-center gap-1">
                 <span>Kata Kunci: "{searchQuery}"</span>
-                <button 
-                  type="button" 
-                  onClick={() => setSearchQuery('')}
-                  className="hover:text-red-600"
-                >
+                <button type="button" onClick={() => setSearchQuery('')} className="hover:text-red-600">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -1370,12 +1456,11 @@ export default function PetaSpasialHST({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MAP CONTAINER & SIDEBAR AREA RANKING */}
+      {/* 3. MAP CONTAINER & SIDEBAR DATA (POSKAMLING, PATROLI, SATLINMAS) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Main Map Box */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden relative min-h-[540px]">
-          {/* Loading Indicator */}
+        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden relative min-h-[560px]">
           {isLoadingGeo && (
             <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2">
               <Loader2 className="w-8 h-8 text-[#0F2A4A] animate-spin" />
@@ -1384,106 +1469,92 @@ export default function PetaSpasialHST({
           )}
 
           {/* Leaflet Map Target */}
-          <div ref={mapContainerRef} className="w-full h-[600px]" />
+          <div ref={mapContainerRef} className="w-full h-[420px] sm:h-[500px] lg:h-[620px]" />
           
-          {/* Floating Map Legend Overlay */}
-          <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-slate-200 text-xs space-y-2.5 max-w-[270px]">
-            {/* GRADASI KEPADATAN SPASIAL SECTION */}
-            {useGradasi && (
-              <div className="space-y-1.5 pb-2 border-b border-slate-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0F2A4A] flex items-center gap-1">
-                    <Palette className="w-3 h-3 text-amber-600" />
-                    <span>Gradasi Kepadatan Wilayah</span>
-                  </span>
-                  <span className="text-[9.5px] font-bold text-slate-500 capitalize">
-                    {gradasiPalette === 'trantibum' ? 'Trantibum' : 'Spektrum'}
-                  </span>
-                </div>
+          {/* Mobile Legend Toggle Button */}
+          <div className="absolute top-4 right-4 z-20 md:hidden">
+            <button
+              type="button"
+              onClick={() => setShowMobileLegend(!showMobileLegend)}
+              className="bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-md border border-slate-200 text-xs font-bold text-[#0F2A4A] flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <Layers className="w-3.5 h-3.5 text-amber-600" />
+              <span>{showMobileLegend ? 'Tutup Legenda' : 'Legenda'}</span>
+            </button>
+          </div>
 
-                {/* Color Ramp Bar */}
-                <div className="grid grid-cols-5 gap-1 pt-0.5">
-                  <div className="text-center">
-                    <div 
-                      className="h-3 rounded-xs border border-slate-300" 
-                      style={{ backgroundColor: getGradasiColor(0, gradasiPalette).fill }}
-                    />
-                    <span className="text-[8.5px] font-bold text-slate-600 block mt-0.5">0</span>
-                    <span className="text-[7.5px] text-slate-400 block leading-none">Aman</span>
-                  </div>
-                  <div className="text-center">
-                    <div 
-                      className="h-3 rounded-xs border border-slate-300" 
-                      style={{ backgroundColor: getGradasiColor(2, gradasiPalette).fill }}
-                    />
-                    <span className="text-[8.5px] font-bold text-slate-600 block mt-0.5">1-2</span>
-                    <span className="text-[7.5px] text-slate-400 block leading-none">Rendah</span>
-                  </div>
-                  <div className="text-center">
-                    <div 
-                      className="h-3 rounded-xs border border-slate-300" 
-                      style={{ backgroundColor: getGradasiColor(4, gradasiPalette).fill }}
-                    />
-                    <span className="text-[8.5px] font-bold text-slate-600 block mt-0.5">3-5</span>
-                    <span className="text-[7.5px] text-slate-400 block leading-none">Sedang</span>
-                  </div>
-                  <div className="text-center">
-                    <div 
-                      className="h-3 rounded-xs border border-slate-300" 
-                      style={{ backgroundColor: getGradasiColor(8, gradasiPalette).fill }}
-                    />
-                    <span className="text-[8.5px] font-bold text-slate-600 block mt-0.5">6-9</span>
-                    <span className="text-[7.5px] text-slate-400 block leading-none">Tinggi</span>
-                  </div>
-                  <div className="text-center">
-                    <div 
-                      className="h-3 rounded-xs border border-slate-300" 
-                      style={{ backgroundColor: getGradasiColor(10, gradasiPalette).fill }}
-                    />
-                    <span className="text-[8.5px] font-bold text-slate-600 block mt-0.5">10+</span>
-                    <span className="text-[7.5px] text-rose-600 font-bold block leading-none">Prioritas</span>
-                  </div>
+          {/* Floating Map Legend Overlay */}
+          <div className={`absolute top-14 md:top-4 right-4 z-20 bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-slate-200 text-xs space-y-2.5 max-w-[280px] ${showMobileLegend ? 'block' : 'hidden md:block'}`}>
+            {/* LEGENDA SIMBOL TITIK */}
+            <div className="space-y-1.5 pb-2 border-b border-slate-200">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0F2A4A] block">
+                Simbol Pin Peta Digital
+              </span>
+              <div className="space-y-1 text-[11px]">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-[#D97706] text-white flex items-center justify-center text-[10px] font-bold shadow-2xs">
+                    📻
+                  </span>
+                  <span className="font-bold text-slate-800">Poskamling (Pos Ronda)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-[#059669] text-white flex items-center justify-center text-[10px] font-bold shadow-2xs">
+                    🚓
+                  </span>
+                  <span className="font-bold text-slate-800">Kegiatan & Patroli GPS</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-[#0F2A4A] text-[#F0B429] flex items-center justify-center text-[10px] font-bold shadow-2xs border border-[#F0B429]/50">
+                    🛡️
+                  </span>
+                  <span className="font-bold text-slate-800">Data Anggota Satlinmas</span>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* LEGENDA TITIK KEJADIAN */}
+            {/* WARNA WILAYAH BERDASARKAN JUMLAH DATA */}
             <div className="space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                Simbol Pin Lapangan
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 block">
+                Warna Wilayah (Pos, Patroli & Linmas)
               </span>
-              <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10.5px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0"></span>
-                  <span className="font-semibold text-slate-700">Penertiban</span>
+              <p className="text-[9px] text-slate-500 leading-tight">
+                Semakin banyak data di wilayah, warnanya semakin pekat:
+              </p>
+              <div className="grid grid-cols-5 gap-1 pt-0.5">
+                <div className="text-center">
+                  <div className="h-2.5 rounded-xs border border-slate-300" style={{ backgroundColor: '#F8FAFC' }} />
+                  <span className="text-[8px] text-slate-500 block mt-0.5">0 Data</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-sky-600 shrink-0"></span>
-                  <span className="font-semibold text-slate-700">Pengawasan</span>
+                <div className="text-center">
+                  <div className="h-2.5 rounded-xs border border-emerald-300" style={{ backgroundColor: '#D1FAE5' }} />
+                  <span className="text-[8px] text-emerald-800 font-semibold block mt-0.5">1-2</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-                  <span className="font-semibold text-slate-700">Pengamanan</span>
+                <div className="text-center">
+                  <div className="h-2.5 rounded-xs border border-emerald-400" style={{ backgroundColor: '#6EE7B7' }} />
+                  <span className="text-[8px] text-emerald-900 font-bold block mt-0.5">3-5</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-700 shrink-0"></span>
-                  <span className="font-semibold text-slate-700">BAP Perda</span>
+                <div className="text-center">
+                  <div className="h-2.5 rounded-xs border border-emerald-600" style={{ backgroundColor: '#10B981' }} />
+                  <span className="text-[8px] text-emerald-950 font-bold block mt-0.5">6-9</span>
+                </div>
+                <div className="text-center">
+                  <div className="h-2.5 rounded-xs border border-emerald-800" style={{ backgroundColor: '#047857' }} />
+                  <span className="text-[8px] text-emerald-950 font-extrabold block mt-0.5">10+</span>
                 </div>
               </div>
             </div>
 
             <div className="pt-1.5 border-t border-slate-200 text-[9.5px] text-slate-500 leading-tight">
-              💡 <i>Klik poligon batas desa/kecamatan untuk fokus wilayah.</i>
+              💡 <i>Klik pin marker untuk membuka detail lengkap dan rute Google Maps.</i>
             </div>
           </div>
 
-          {/* Floating Map Controls (Reset HST, Barabai, Zoom) */}
+          {/* Floating Controls */}
           <div className="absolute top-4 left-4 z-20 flex flex-col gap-1.5">
             <button
               type="button"
               onClick={handleFocusHST}
               className="px-3 py-1.5 bg-white/95 hover:bg-white text-[#0F2A4A] text-xs font-bold rounded-xl shadow-md border border-slate-200 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Kembalikan zoom ke seluruh Kabupaten Hulu Sungai Tengah"
             >
               <Compass className="w-3.5 h-3.5 text-blue-600" />
               <span>Seluruh HST</span>
@@ -1492,14 +1563,13 @@ export default function PetaSpasialHST({
               type="button"
               onClick={handleFocusBarabai}
               className="px-3 py-1.5 bg-white/95 hover:bg-white text-[#0F2A4A] text-xs font-bold rounded-xl shadow-md border border-slate-200 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Fokus ke Pusat Ibukota Barabai"
             >
               <Building2 className="w-3.5 h-3.5 text-amber-600" />
               <span>Pusat Barabai</span>
             </button>
           </div>
 
-          {/* Floating Active Points Counter */}
+          {/* Floating Points Counter */}
           <div className="absolute bottom-4 left-4 z-20 bg-[#0F2A4A]/90 backdrop-blur-md px-3.5 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-2 border border-slate-700 shadow-lg">
             <MapPin className="w-3.5 h-3.5 text-[#F0B429]" />
             <span>
@@ -1510,11 +1580,11 @@ export default function PetaSpasialHST({
         </div>
 
         {/* ========================================================================= */}
-        {/* 4. SIDEBAR: AREA RANKING & DAFTAR TITIK PENINDAKAN */}
+        {/* 4. SIDEBAR: DAFTAR DATA & SEBERAN WILAYAH */}
         {/* ========================================================================= */}
         <div className="lg:col-span-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
           <div>
-            {/* Selected Desa Spotlight Card (jika sedang memilih desa tertentu) */}
+            {/* Selected Desa Spotlight Card */}
             {selectedDesaInfo && (
               <div className="mb-3 p-3.5 bg-amber-50/80 border-2 border-[#F0B429] rounded-xl text-xs space-y-2 relative shadow-xs">
                 <div className="flex items-center justify-between">
@@ -1525,7 +1595,6 @@ export default function PetaSpasialHST({
                     type="button"
                     onClick={() => handleSelectDesa('semua')}
                     className="text-slate-500 hover:text-red-600 cursor-pointer"
-                    title="Batal pilih desa"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1540,18 +1609,18 @@ export default function PetaSpasialHST({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-amber-200/80">
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-amber-200/80 text-center">
                   <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
-                    <span className="text-[10px] text-slate-500 block">Penindakan:</span>
-                    <span className="font-bold text-red-600 font-mono text-xs">
-                      {selectedDesaInfo.penindakanCount} Kegiatan
-                    </span>
+                    <span className="text-[9.5px] text-slate-500 block">Poskamling</span>
+                    <span className="font-bold text-[#D97706] font-mono text-xs">{selectedDesaInfo.posCount}</span>
                   </div>
                   <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
-                    <span className="text-[10px] text-slate-500 block">Pelanggaran Perda:</span>
-                    <span className="font-bold text-amber-700 font-mono text-xs">
-                      {selectedDesaInfo.pelanggaranCount} Berkas
-                    </span>
+                    <span className="text-[9.5px] text-slate-500 block">Patroli</span>
+                    <span className="font-bold text-[#059669] font-mono text-xs">{selectedDesaInfo.patCount}</span>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
+                    <span className="text-[9.5px] text-slate-500 block">Satlinmas</span>
+                    <span className="font-bold text-[#0F2A4A] font-mono text-xs">{selectedDesaInfo.linCount}</span>
                   </div>
                 </div>
 
@@ -1568,59 +1637,63 @@ export default function PetaSpasialHST({
 
             {/* Sidebar Tab Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-3">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-1.5 text-xs">
                 <button
                   type="button"
                   onClick={() => setActiveSideTab('ranking')}
-                  className={`text-xs font-bold pb-1 flex items-center gap-1 transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                     activeSideTab === 'ranking'
-                      ? 'text-[#0F2A4A] border-b-2 border-[#0F2A4A]'
-                      : 'text-slate-400 hover:text-slate-700'
+                      ? 'bg-[#0F2A4A] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <Trophy className="w-3.5 h-3.5 text-[#F0B429]" />
-                  <span>Kecamatan</span>
+                  Wilayah
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveSideTab('desa_rawan')}
-                  className={`text-xs font-bold pb-1 flex items-center gap-1 transition-colors cursor-pointer ${
-                    activeSideTab === 'desa_rawan'
-                      ? 'text-[#0F2A4A] border-b-2 border-[#0F2A4A]'
-                      : 'text-slate-400 hover:text-slate-700'
+                  onClick={() => setActiveSideTab('poskamling')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeSideTab === 'poskamling'
+                      ? 'bg-[#D97706] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                  <span>Desa Rawan</span>
+                  Poskamling ({totalPoskamling})
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveSideTab('titik')}
-                  className={`text-xs font-bold pb-1 flex items-center gap-1 transition-colors cursor-pointer ${
-                    activeSideTab === 'titik'
-                      ? 'text-[#0F2A4A] border-b-2 border-[#0F2A4A]'
-                      : 'text-slate-400 hover:text-slate-700'
+                  onClick={() => setActiveSideTab('patroli')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeSideTab === 'patroli'
+                      ? 'bg-[#059669] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Titik ({filteredPoints.length})</span>
+                  Patroli ({totalPatroli})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSideTab('satlinmas')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeSideTab === 'satlinmas'
+                      ? 'bg-[#0F2A4A] text-[#F0B429] shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Linmas ({totalSatlinmas})
                 </button>
               </div>
             </div>
 
-            {/* TAB 1: PERINGKAT KECAMATAN */}
+            {/* TAB 1: SEBARAN WILAYAH PER KECAMATAN */}
             {activeSideTab === 'ranking' && (
-              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                 <p className="text-[11px] text-slate-500 mb-2 font-medium">
-                  Klik nama kecamatan untuk memfokuskan poligon batas wilayah:
+                  Rincian sebaran per-kecamatan. Klik untuk memfokuskan wilayah di peta:
                 </p>
 
                 {areaRanking.map((kec, idx) => {
-                  const isTopOne = idx === 0 && kec.total > 0;
-                  const isTopTwo = idx === 1 && kec.total > 0;
-                  const isTopThree = idx === 2 && kec.total > 0;
                   const isSelected = selectedKecamatan.toLowerCase() === kec.nama.toLowerCase();
-                  const gKec = getGradasiColor(kec.total, gradasiPalette);
 
                   return (
                     <div
@@ -1629,62 +1702,31 @@ export default function PetaSpasialHST({
                       className={`p-3 rounded-xl border transition-all cursor-pointer ${
                         isSelected 
                           ? 'border-[#0F2A4A] bg-amber-50/70 shadow-xs ring-1 ring-[#0F2A4A]' 
-                          : isTopOne 
-                            ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400' 
-                            : 'border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-slate-100/70'
+                          : 'border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-slate-100/70'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
-                            isTopOne ? 'bg-[#F0B429] text-[#0F2A4A]' :
-                            isTopTwo ? 'bg-slate-300 text-slate-800' :
-                            isTopThree ? 'bg-amber-700 text-white' :
-                            'bg-slate-200 text-slate-600'
-                          }`}>
+                          <span className="w-5 h-5 rounded-full bg-[#0F2A4A] text-[#F0B429] flex items-center justify-center text-[10px] font-extrabold">
                             {idx + 1}
                           </span>
                           <span className="font-extrabold text-[#0F2A4A] text-xs">
                             Kec. {kec.nama}
                           </span>
-                          {useGradasi && (
-                            <span 
-                              className="px-1.5 py-0.2 rounded text-[9px] font-extrabold border"
-                              style={{ 
-                                backgroundColor: gKec.fill, 
-                                borderColor: gKec.border, 
-                                color: gKec.textColor 
-                              }}
-                            >
-                              {gKec.tier.toUpperCase()}
-                            </span>
-                          )}
                         </div>
 
                         <div className="text-right">
                           <span className="font-mono font-extrabold text-[#0F2A4A] text-xs">
                             {kec.total} Titik
                           </span>
-                          <span className="text-[10px] text-slate-400 block font-semibold">
-                            {kec.percentage}% dari total
-                          </span>
                         </div>
                       </div>
 
-                      {/* Progress Bar Konsentrasi Kejadian */}
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(100, Math.max(5, kec.percentage))}%`,
-                            backgroundColor: useGradasi ? gKec.border : (isTopOne ? '#DC2626' : '#0F2A4A')
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 mt-1 border-t border-slate-200/60 font-medium">
-                        <span>Penindakan: <b>{kec.penindakanCount}</b> | Perkara: <b>{kec.pelanggaranCount}</b></span>
-                        <span className="text-slate-600">Desa Rawan: <b>{kec.topDesa}</b></span>
+                      {/* Distribution breakdown */}
+                      <div className="grid grid-cols-3 gap-1 mt-2 pt-1.5 border-t border-slate-200/70 text-[10px]">
+                        <span className="text-[#D97706] font-bold">📻 {kec.posCount} Pos</span>
+                        <span className="text-[#059669] font-bold">🚓 {kec.patCount} Patroli</span>
+                        <span className="text-[#0F2A4A] font-bold">🛡️ {kec.linCount} Linmas</span>
                       </div>
                     </div>
                   );
@@ -1692,143 +1734,153 @@ export default function PetaSpasialHST({
               </div>
             )}
 
-            {/* TAB 2: TOP DESA RAWAN */}
-            {activeSideTab === 'desa_rawan' && (
-              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+            {/* TAB 2: DAFTAR DATA POSKAMLING */}
+            {activeSideTab === 'poskamling' && (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                 <p className="text-[11px] text-slate-500 mb-2 font-medium">
-                  10 Desa/Kelurahan dengan frekuensi pelanggaran & penindakan terbanyak:
+                  Klik poskamling untuk terbang ke titik lokasi di peta:
                 </p>
 
-                {topDesaRanking.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 text-xs">
-                    Belum ada data desa tercatat
-                  </div>
-                ) : (
-                  topDesaRanking.map((d, idx) => {
-                    const isSelected = selectedDesa.toLowerCase() === d.desa.toLowerCase();
-                    const gDesa = getGradasiColor(d.total, gradasiPalette);
-
-                    return (
-                      <div
-                        key={`${d.desa}-${d.kecamatan}`}
-                        onClick={() => {
-                          setSelectedKecamatan(d.kecamatan);
-                          handleSelectDesa(d.desa);
-                        }}
-                        className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-amber-400 bg-amber-50 shadow-xs ring-1 ring-amber-400'
-                            : 'border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span 
-                              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold border"
-                              style={{ 
-                                backgroundColor: gDesa.fill, 
-                                borderColor: gDesa.border, 
-                                color: gDesa.textColor 
-                              }}
-                            >
-                              #{idx + 1}
-                            </span>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="font-extrabold text-[#0F2A4A] text-xs">
-                                  Desa/Kel. {d.desa}
-                                </p>
-                                {useGradasi && (
-                                  <span 
-                                    className="px-1.5 py-0.2 rounded text-[8.5px] font-extrabold border"
-                                    style={{ 
-                                      backgroundColor: gDesa.fill, 
-                                      borderColor: gDesa.border, 
-                                      color: gDesa.textColor 
-                                    }}
-                                  >
-                                    {gDesa.tier.toUpperCase()}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[10px] text-slate-500 font-medium">
-                                Kec. {d.kecamatan}
-                              </span>
-                            </div>
+                {allMapPoints
+                  .filter(p => p.sourceType === 'poskamling')
+                  .map((pos) => (
+                    <div
+                      key={pos.id}
+                      onClick={() => handleFlyToPoint(pos)}
+                      className="p-3 bg-amber-50/40 hover:bg-amber-100/60 border border-amber-200 rounded-xl transition-all cursor-pointer space-y-1.5 group"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-[#D97706] text-white flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                            📻
                           </div>
-
-                          <div className="text-right">
-                            <span className="font-mono font-extrabold text-red-600 text-xs block">
-                              {d.total} Kejadian
-                            </span>
-                            <span className="text-[9.5px] text-slate-400">
-                              🚨 {d.penindakan} | ⚖️ {d.pelanggaran}
+                          <div>
+                            <h5 className="font-extrabold text-[#0F2A4A] text-xs group-hover:text-blue-600 transition-colors">
+                              {pos.title}
+                            </h5>
+                            <span className="text-[10px] text-slate-500 block">
+                              Desa {pos.desa}, Kec. {pos.kecamatan}
                             </span>
                           </div>
                         </div>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-800">
+                          {pos.kondisi}
+                        </span>
                       </div>
-                    );
-                  })
-                )}
+
+                      <div className="text-[10px] text-slate-600 flex items-center justify-between pt-1 border-t border-amber-200/60">
+                        <span>Ketua: <b>{pos.namaKetua}</b></span>
+                        <span className="text-[#D97706] font-bold">👥 {pos.personilCount} Ronda</span>
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
 
-            {/* TAB 3: DAFTAR TITIK KEJADIAN */}
-            {activeSideTab === 'titik' && (
-              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
-                {filteredPoints.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400">
-                    <MapPin className="w-8 h-8 text-slate-300 mx-auto mb-1" />
-                    <p className="font-bold text-xs">Tidak ada titik yang sesuai filter</p>
-                  </div>
-                ) : (
-                  filteredPoints.map((item) => (
+            {/* TAB 3: DAFTAR KEGIATAN PATROLI */}
+            {activeSideTab === 'patroli' && (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                <p className="text-[11px] text-slate-500 mb-2 font-medium">
+                  Klik laporan patroli untuk melihat titik GPS kejadian:
+                </p>
+
+                {allMapPoints
+                  .filter(p => p.sourceType === 'patroli')
+                  .map((pat) => (
                     <div
-                      key={item.id}
-                      onClick={() => {
-                        if (mapInstanceRef.current) {
-                          mapInstanceRef.current.flyTo([item.lat, item.lng], 15, { duration: 1 });
-                        }
-                        if (item.sourceType === 'pelanggaran' && onSelectPelanggaran) {
-                          onSelectPelanggaran(item.raw);
-                        }
-                      }}
-                      className="p-3 rounded-xl border border-slate-200 hover:border-[#0F2A4A] bg-slate-50/70 hover:bg-amber-50/50 cursor-pointer transition-all text-xs space-y-1.5"
+                      key={pat.id}
+                      onClick={() => handleFlyToPoint(pat)}
+                      className="p-3 bg-emerald-50/40 hover:bg-emerald-100/60 border border-emerald-200 rounded-xl transition-all cursor-pointer space-y-1.5 group"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          item.sourceType === 'penindakan'
-                            ? 'bg-red-50 text-red-700 border border-red-200'
-                            : 'bg-purple-50 text-purple-700 border border-purple-200'
-                        }`}>
-                          {item.sourceType === 'penindakan' ? `🚨 ${item.tindakLanjut}` : `⚖️ ${item.status}`}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-[#059669] text-white flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                            🚓
+                          </div>
+                          <div>
+                            <h5 className="font-extrabold text-[#0F2A4A] text-xs group-hover:text-emerald-700 transition-colors">
+                              {pat.title}
+                            </h5>
+                            <span className="text-[10px] text-slate-500 block">
+                              {pat.waktu} &bull; Kec. {pat.kecamatan}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-800">
+                          {pat.status}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-medium">{item.tanggal}</span>
                       </div>
 
-                      <p className="font-bold text-[#0F2A4A] line-clamp-1">{item.title}</p>
-                      <p className="text-slate-600 text-[11px] font-medium line-clamp-1">{item.lokasi || '-'}</p>
+                      <p className="text-[10px] text-slate-600 line-clamp-2">
+                        {pat.hasil}
+                      </p>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200">
-                        <span>Kec. {item.kecamatan}{item.desa ? `, Desa ${item.desa}` : ''}</span>
-                        <span className="font-mono">{item.lat.toFixed(3)}, {item.lng.toFixed(3)}</span>
+                      <div className="text-[10px] text-slate-500 pt-1 border-t border-emerald-200/60 flex items-center justify-between">
+                        <span>Pelapor: <b>{pat.petugasPelapor}</b></span>
+                        <span className="font-mono text-emerald-700 font-bold">{pat.personilCount} Org</span>
                       </div>
                     </div>
-                  ))
-                )}
+                  ))}
+              </div>
+            )}
+
+            {/* TAB 4: DAFTAR DATA SATLINMAS */}
+            {activeSideTab === 'satlinmas' && (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                <p className="text-[11px] text-slate-500 mb-2 font-medium">
+                  Klik anggota Satlinmas untuk melihat titik penugasan wilayah:
+                </p>
+
+                {allMapPoints
+                  .filter(p => p.sourceType === 'satlinmas')
+                  .map((lin) => (
+                    <div
+                      key={lin.id}
+                      onClick={() => handleFlyToPoint(lin)}
+                      className="p-3 bg-slate-50 hover:bg-amber-50/60 border border-slate-200 hover:border-[#F0B429] rounded-xl transition-all cursor-pointer space-y-1.5 group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {lin.pasFoto ? (
+                          <img src={lin.pasFoto} alt={lin.title} className="w-8 h-10 rounded-lg object-cover border border-[#F0B429] shrink-0" />
+                        ) : (
+                          <div className="w-8 h-10 rounded-lg bg-[#0F2A4A] text-[#F0B429] flex items-center justify-center font-bold text-xs shrink-0">
+                            🛡️
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-extrabold text-[#0F2A4A] text-xs truncate group-hover:text-blue-600 transition-colors">
+                            {lin.title}
+                          </h5>
+                          <span className="text-[10px] text-slate-500 block font-mono">
+                            Reg: {lin.noRegistrasi}
+                          </span>
+                          <span className="text-[9.5px] text-emerald-700 font-bold block">
+                            Desa {lin.desa}, Kec. {lin.kecamatan}
+                          </span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-[#0F2A4A] text-[#F0B429]">
+                          Aktif
+                        </span>
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
           </div>
 
-          {/* Footer Card PostGIS & GeoJSON Info */}
-          <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-900 mt-2">
-            <div className="flex items-center gap-1.5 font-bold mb-1">
-              <Info className="w-3.5 h-3.5 text-blue-700" />
-              <span>Peta Vektor Spasial Hulu Sungai Tengah</span>
-            </div>
-            <p className="text-[11px] text-blue-800 leading-relaxed">
-              Memuat data spasial resmi <b>11 Kecamatan</b> & <b>169 Desa/Kelurahan</b> Kab. Hulu Sungai Tengah. Klik batas desa pada peta untuk langsung mengisolasi statistik pelanggaran wilayah bersangkutan.
-            </p>
+          {/* Quick Footer Action */}
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium text-[11px]">
+              {filteredPoints.length} dari {allMapPoints.length} titik aktif
+            </span>
+            <button
+              type="button"
+              onClick={handleFocusHST}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>Reset Posisi</span>
+            </button>
           </div>
         </div>
       </div>

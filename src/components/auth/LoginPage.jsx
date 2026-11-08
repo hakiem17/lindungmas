@@ -13,89 +13,127 @@ import {
   Building2,
   Sparkles
 } from 'lucide-react';
-import { getPegawaiList, saveAuthSession } from '../../data/storageService';
+import { supabase } from '../../data/supabaseClient';
+import { saveAuthSession, getProfilPenggunaList } from '../../data/storageService';
+
+const EMAIL_DOMAIN = '@satpolpp.hstkab.go.id';
 
 export default function LoginPage({ 
   onLoginSuccess, 
   onBackToLanding 
 }) {
-  const pegawaiList = getPegawaiList();
-  
-  // Default accounts from Master Pegawai
-  const adminPegawai = pegawaiList.find(p => p.peran === 'admin') || {
-    id: 'peg-001',
-    nama: 'Drs. H. Subhan, M.Si',
-    nip: '19740815 199603 1 002',
-    jabatan: 'Kepala Satuan Polisi Pamong Praja',
-    peran: 'admin'
-  };
-
-  const userPegawai = pegawaiList.find(p => p.peran === 'user') || {
-    id: 'peg-002',
-    nama: 'M. Rizky Pratama, S.H.',
-    nip: '19820512 200801 1 005',
-    jabatan: 'Petugas Penegak Perda',
-    peran: 'user'
-  };
-
-  const [selectedRolePreset, setSelectedRolePreset] = useState('admin');
-  const [username, setUsername] = useState(adminPegawai.nip);
-  const [password, setPassword] = useState('satpolpp123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Switch role preset
-  const handleSelectPreset = (role) => {
-    setSelectedRolePreset(role);
-    setErrorMsg('');
-    if (role === 'admin') {
-      setUsername(adminPegawai.nip);
-      setPassword('satpolpp123');
-    } else {
-      setUsername(userPegawai.nip);
-      setPassword('petugas123');
-    }
+  // NIP (spasi diabaikan) atau email lengkap -> email login Supabase Auth
+  const toEmail = (input) => {
+    const v = input.trim();
+    if (v.includes('@')) return v.toLowerCase();
+    const clean = v.replace(/[^a-zA-Z0-9]/g, '');
+    return `${clean}${EMAIL_DOMAIN}`;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
     if (!username.trim() || !password.trim()) {
-      setErrorMsg('Harap masukkan NIP/Username dan Kata Sandi!');
+      setErrorMsg('Harap masukkan NIP/NIK/Email dan Kata Sandi!');
       return;
     }
 
     setIsLoading(true);
+    try {
+      let sessionUser = null;
 
-    setTimeout(() => {
-      setIsLoading(false);
-      // Determine user object based on selected preset or match in pegawaiList
-      let matchedUser = pegawaiList.find(p => 
-        p.nip === username.trim() || 
-        p.nama.toLowerCase().includes(username.toLowerCase())
-      );
+      // 1. Coba login melalui Supabase Auth
+      const { data: auth, error: authErr } = await supabase.auth.signInWithPassword({
+        email: toEmail(username),
+        password
+      });
 
-      if (!matchedUser) {
-        matchedUser = selectedRolePreset === 'admin' ? adminPegawai : userPegawai;
+      if (!authErr && auth?.user) {
+        const { data: profil } = await supabase
+          .from('profil_pengguna')
+          .select('*')
+          .eq('id', auth.user.id)
+          .maybeSingle();
+
+        if (profil) {
+          sessionUser = {
+            id: profil.id,
+            nama: profil.nama,
+            nip: profil.nip,
+            nik: profil.nik || profil.nip,
+            noRegistrasi: profil.no_registrasi || '',
+            jabatan: profil.jabatan,
+            peran: profil.peran,
+            wilayahTugas: profil.wilayah_tugas || 'Seluruh Kabupaten Hulu Sungai Tengah',
+            desaTugas: profil.desa_tugas || '',
+            noHp: profil.no_hp || '',
+            email: profil.email || auth.user.email,
+            foto: profil.foto_url || '',
+            loginTime: new Date().toISOString()
+          };
+        }
       }
 
-      // Save session
-      const sessionUser = {
-        id: matchedUser.id,
-        nama: matchedUser.nama,
-        nip: matchedUser.nip,
-        jabatan: matchedUser.jabatan,
-        peran: selectedRolePreset || matchedUser.peran || 'user',
-        foto: matchedUser.foto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80',
-        loginTime: new Date().toISOString()
-      };
+      // 2. Fallback verifikasi profil pengguna (mendukung NIP, NIK 16 digit, No. Registrasi, Email)
+      if (!sessionUser) {
+        const localList = getProfilPenggunaList();
+        const inputClean = username.trim().toLowerCase();
+        const inputNoSym = inputClean.replace(/[^a-z0-9]/g, '');
+
+        const found = localList.find(u => {
+          const uNip = (u.nip || '').toLowerCase();
+          const uNik = (u.nik || '').toLowerCase();
+          const uReg = (u.noRegistrasi || '').toLowerCase();
+          const uEmail = (u.email || '').toLowerCase();
+          return (
+            uNip === inputClean ||
+            uNik === inputClean ||
+            uReg === inputClean ||
+            uEmail === inputClean ||
+            (uNip.replace(/[^a-z0-9]/g, '') === inputNoSym && inputNoSym.length > 5) ||
+            (uReg.replace(/[^a-z0-9]/g, '') === inputNoSym && inputNoSym.length > 5)
+          );
+        });
+
+        if (found && (found.status === 'Aktif' || !found.status)) {
+          sessionUser = {
+            id: found.id,
+            nama: found.nama,
+            nip: found.nip,
+            nik: found.nik || found.nip,
+            noRegistrasi: found.noRegistrasi || '',
+            jabatan: found.jabatan,
+            peran: found.peran || 'anggota_linmas',
+            wilayahTugas: found.wilayahTugas || 'Barabai',
+            desaTugas: found.desaTugas || '',
+            noHp: found.noHp || '',
+            email: found.email,
+            foto: found.foto || '',
+            loginTime: new Date().toISOString()
+          };
+        }
+      }
+
+      if (!sessionUser) {
+        setErrorMsg('NIP, NIK, No. Registrasi atau kata sandi tidak ditemukan.');
+        return;
+      }
 
       saveAuthSession(sessionUser);
       onLoginSuccess(sessionUser);
-    }, 600);
+    } catch (err) {
+      setErrorMsg('Gagal terhubung ke server: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -115,7 +153,7 @@ export default function LoginPage({
           <div className="w-8 h-8 rounded-xl bg-[#0F2A4A] text-[#F0B429] flex items-center justify-center font-bold">
             <Shield className="w-4 h-4" />
           </div>
-          <span className="font-extrabold text-[#0F2A4A] text-sm hidden sm:inline">GARDA MURAKATA</span>
+          <span className="font-extrabold text-[#0F2A4A] text-sm hidden sm:inline">LINDUNGMAS HST</span>
         </div>
       </div>
 
@@ -137,10 +175,10 @@ export default function LoginPage({
                   Portal Kedinasan Resmi
                 </span>
                 <h2 className="text-xl font-extrabold tracking-tight mt-2 text-white">
-                  GARDA MURAKATA
+                  LINDUNGMAS HST
                 </h2>
                 <p className="text-xs text-slate-300 font-medium">
-                  Satuan Polisi Pamong Praja Kabupaten Hulu Sungai Tengah
+                  Layanan Informasi & Data Perlindungan Masyarakat Kab. Hulu Sungai Tengah
                 </p>
               </div>
 
@@ -171,63 +209,11 @@ export default function LoginPage({
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-extrabold text-[#0F2A4A] tracking-tight">
-                  Masuk ke Portal Petugas
+                  Masuk ke Portal Petugas & Linmas
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Pilih peran kedinasan atau masukkan NIP dan kata sandi Anda untuk mengakses dashboard
+                  Masukkan NIP / NIK / No. Registrasi dan kata sandi Anda untuk masuk ke sistem
                 </p>
-              </div>
-
-              {/* Role Presets (Admin & User) */}
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Pilih Simulasi Akun Masuk:
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Admin Preset */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPreset('admin')}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      selectedRolePreset === 'admin'
-                        ? 'border-[#0F2A4A] bg-amber-50/60 ring-2 ring-[#0F2A4A]/10 shadow-xs'
-                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
-                        Admin
-                      </span>
-                      {selectedRolePreset === 'admin' && (
-                        <span className="w-2 h-2 rounded-full bg-[#0F2A4A]"></span>
-                      )}
-                    </div>
-                    <div className="font-bold text-xs text-[#0F2A4A] truncate">{adminPegawai.nama}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{adminPegawai.jabatan}</div>
-                  </button>
-
-                  {/* User (Petugas Lapangan) Preset */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPreset('user')}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      selectedRolePreset === 'user'
-                        ? 'border-[#0F2A4A] bg-amber-50/60 ring-2 ring-[#0F2A4A]/10 shadow-xs'
-                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                        User / Petugas
-                      </span>
-                      {selectedRolePreset === 'user' && (
-                        <span className="w-2 h-2 rounded-full bg-[#0F2A4A]"></span>
-                      )}
-                    </div>
-                    <div className="font-bold text-xs text-[#0F2A4A] truncate">{userPegawai.nama}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{userPegawai.jabatan}</div>
-                  </button>
-                </div>
               </div>
 
               {/* Error Alert */}
@@ -242,7 +228,7 @@ export default function LoginPage({
               <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">
-                    Nomor Induk Pegawai (NIP) / Nama Pengguna *
+                    NIP / NIK / No. Registrasi KTA / Email *
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -250,11 +236,14 @@ export default function LoginPage({
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Masukkan NIP Pegawai"
+                      placeholder="NIP Pegawai / NIK 16-digit / No. Reg Linmas"
                       className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#0F2A4A] outline-hidden text-slate-800 font-mono text-xs"
                       required
                     />
                   </div>
+                  <p className="text-[10.5px] text-slate-500 mt-1">
+                    *Anggota Satlinmas dapat login langsung dengan <strong>NIK 16 digit</strong> atau <strong>No. Registrasi</strong> KTA.
+                  </p>
                 </div>
 
                 <div>
@@ -291,7 +280,6 @@ export default function LoginPage({
                     />
                     <span>Ingat sesi masuk</span>
                   </label>
-                  <span className="text-[11px] text-slate-400">Hak Akses: {selectedRolePreset.toUpperCase()}</span>
                 </div>
 
                 <button

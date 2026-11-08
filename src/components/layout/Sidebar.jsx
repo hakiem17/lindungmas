@@ -1,22 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
-  UserPlus, 
-  ClipboardList, 
-  FileSpreadsheet,
   MapPin, 
   Car, 
-  Megaphone, 
-  BookOpen, 
   ShieldAlert, 
-  FileCheck2,
+  ShieldCheck,
+  Shield,
   Users,
-  UserCheck,
   Map,
   Database,
+  Radio,
+  IdCard,
   X,
   Home,
-  LogOut
+  LogOut,
+  CheckSquare,
+  UserCog,
+  UserCheck,
+  User,
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  FileSpreadsheet,
+  ExternalLink
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -26,23 +32,99 @@ export default function Sidebar({
   onCloseMobile, 
   counts = {},
   onNavigateToLanding,
-  onLogout
+  onLogout,
+  activeRole = 'admin_kabupaten',
+  currentUser
 }) {
-  const menuOperasional = [
-    { id: 'dashboard', label: 'Dashboard & Statistik', icon: LayoutDashboard },
-    { id: 'register_pengaduan', label: 'Rekap Pengaduan & Tindak Lanjut Trantibum', icon: FileCheck2, count: counts.rekapTrantibum },
-    { id: 'rekap', label: 'Rekap Kasus & Sanksi', icon: ClipboardList, count: counts.pelanggaran },
-    { id: 'input', label: 'Input Pelanggar & OCR', icon: UserPlus, badge: 'Cepat' },
-    { id: 'spasial', label: 'Peta Spasial & Titik Rawan', icon: MapPin },
-    { id: 'patroli', label: 'Monitoring Patroli', icon: Car, count: counts.patroli },
-    { id: 'pengaduan', label: 'Verifikasi Pengaduan', icon: Megaphone, count: counts.pengaduan, badgeColor: 'bg-amber-400 text-slate-900' }
+  const isAdmin = activeRole === 'admin_kabupaten' || activeRole === 'admin';
+  const isOperator = activeRole === 'operator_kecamatan' || activeRole === 'operator';
+  const isLinmas = activeRole === 'anggota_linmas' || activeRole === 'linmas';
+
+  // State untuk expand/collapse sub-menu Profil Pengguna
+  const isProfilSectionActive = [
+    'profil_pengguna',
+    'profil_saya',
+    'manajemen_pegawai',
+    'manajemen_kecamatan',
+    'manajemen_linmas'
+  ].includes(activeTab);
+
+  const [isProfilExpanded, setIsProfilExpanded] = useState(true);
+
+  // 1. Menu Mandiri untuk Anggota Linmas (Profil, KTA Digital, dan Input/Riwayat Patroli)
+  const menuLinmasMandiri = [
+    { id: 'profil_linmas', label: 'Profil & KTA Digital', icon: IdCard },
+    { id: 'kegiatan_patroli', label: 'Lapor Patroli & Riwayat', icon: Car, count: counts.kegiatanPatroli }
   ];
 
-  const menuMaster = [
+  // 2. Menu Operasional untuk Admin & Operator
+  const menuOperasional = [
+    { 
+      id: 'dashboard', 
+      label: isOperator ? 'Dashboard Wilayah' : 'Dashboard Utama', 
+      icon: LayoutDashboard 
+    },
+    { 
+      id: 'spasial', 
+      label: isOperator ? 'Peta Wilayah' : 'Peta Digital', 
+      icon: MapPin 
+    }
+  ];
+
+  // 3. Menu Perlindungan Masyarakat (Satlinmas & Poskamling)
+  const menuLinmas = [
+    { 
+      id: 'satlinmas', 
+      label: isOperator ? 'Data Satlinmas Wilayah' : 'Data Satlinmas', 
+      icon: ShieldCheck, 
+      count: counts.satlinmas 
+    },
+    { 
+      id: 'poskamling', 
+      label: isOperator ? 'Data Poskamling Wilayah' : 'Data Poskamling', 
+      icon: Radio, 
+      count: counts.poskamling 
+    },
+    { 
+      id: 'kegiatan_patroli', 
+      label: isOperator ? 'Kegiatan Patroli Wilayah' : 'Kegiatan dan Patroli', 
+      icon: Car, 
+      count: counts.kegiatanPatroli 
+    },
+    { 
+      id: 'kartu_anggota', 
+      label: isOperator ? 'Cetak KTA Wilayah' : 'Cetak Kartu Anggota', 
+      icon: IdCard 
+    }
+  ];
+
+  // 4. Menu Data Master (Operator TIDAK bisa mengatur admin kabupaten / master pegawai)
+  const menuMaster = isAdmin ? [
     { id: 'master_pegawai', label: 'Master Pegawai', icon: Users, count: counts.pegawai },
-    { id: 'master_pelapor', label: 'Master Pelapor', icon: UserCheck, count: counts.pelapor },
     { id: 'master_wilayah', label: 'Master Wilayah', icon: Map, count: counts.kecamatan },
-    { id: 'perda', label: 'Referensi Perda HST', icon: BookOpen, count: counts.perda }
+    { id: 'master_fasilitas_poskamling', label: 'Master Sarana Poskamling', icon: CheckSquare, count: counts.fasilitasPoskamling }
+  ] : [
+    // Operator Kecamatan hanya memiliki sarana poskamling
+    { id: 'master_fasilitas_poskamling', label: 'Sarana Poskamling', icon: CheckSquare, count: counts.fasilitasPoskamling }
+  ];
+
+  // 5. Menu Laporan dan Statistik (Rekapitulasi Situasi Satlinmas)
+  const menuLaporan = [
+    { 
+      id: 'laporan_rekap_satlinmas', 
+      label: 'Rekap Situasi Satlinmas', 
+      icon: FileSpreadsheet
+    }
+  ];
+
+  // 6. Menu Akun & Hak Akses (BARU: Profil Pengguna terpisah dari Master Pegawai)
+  const menuPengguna = [
+    { 
+      id: 'profil_pengguna', 
+      label: isAdmin ? 'Profil & Akun Pengguna' : 'Profil Pengguna', 
+      icon: UserCog, 
+      count: isAdmin ? (counts.pengguna || counts.pegawai) : undefined 
+    }
   ];
 
   const renderMenuItem = (item) => {
@@ -96,21 +178,34 @@ export default function Sidebar({
   const content = (
     <div className="flex flex-col h-full bg-[#0F2A4A] text-slate-200 select-none">
       {/* Brand & Crest */}
-      <div className="p-6 border-b border-white/10 flex items-center justify-between">
+      <div 
+        onClick={() => {
+          if (onNavigateToLanding) onNavigateToLanding();
+          if (onCloseMobile) onCloseMobile();
+        }}
+        className="p-6 border-b border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors group"
+        title="Buka Landing Page Publik LINDUNGMAS HST"
+      >
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#14304F] to-[#0A1A2E] border border-[#F0B429]/40 flex items-center justify-center text-[#F0B429] shadow-inner">
-            <ShieldAlert className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-white/10 border border-[#F0B429]/40 flex items-center justify-center p-1 shadow-inner shrink-0 group-hover:scale-105 transition-transform">
+            <img src="/logo-barabai.png" alt="Logo Barabai HST" className="w-full h-full object-contain filter drop-shadow" />
           </div>
           <div>
-            <h2 className="font-extrabold text-white text-base tracking-wider leading-tight">GARDA MURAKATA</h2>
+            <h2 className="font-extrabold text-white text-base tracking-wider leading-tight group-hover:text-[#F0B429] transition-colors">LINDUNGMAS HST</h2>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-[#F0B429]"></span>
-              <p className="text-[10px] text-[#F0B429] font-medium tracking-wide">SATPOL PP HST</p>
+              <p className="text-[10px] text-[#F0B429] font-medium tracking-wide">LINMAS & SATPOL PP HST</p>
             </div>
           </div>
         </div>
         {isMobileOpen && (
-          <button onClick={onCloseMobile} className="lg:hidden text-white/60 hover:text-white p-1">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onCloseMobile();
+            }} 
+            className="lg:hidden text-white/60 hover:text-white p-1"
+          >
             <X className="w-6 h-6" />
           </button>
         )}
@@ -118,22 +213,257 @@ export default function Sidebar({
 
       {/* Navigation List */}
       <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {/* Section 1: Menu Operasional */}
-        <div className="space-y-1.5">
-          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Menu Operasional
+        {/* Tombol Cepat ke Landing Page Publik */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onNavigateToLanding) onNavigateToLanding();
+            if (onCloseMobile) onCloseMobile();
+          }}
+          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-[#F0B429] border border-[#F0B429]/30 transition-all cursor-pointer shadow-xs group mb-1"
+          title="Buka Halaman Depan / Landing Page Publik LINDUNGMAS HST"
+        >
+          <div className="flex items-center gap-2.5">
+            <Home className="w-4 h-4 text-[#F0B429] transition-transform group-hover:scale-110" />
+            <span>Landing Page Publik</span>
           </div>
-          {menuOperasional.map(renderMenuItem)}
-        </div>
+          <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+        </button>
+        {/* KHUSUS ANGGOTA LINMAS: Hanya Menu Mandiri */}
+        {isLinmas ? (
+          <div className="space-y-2">
+            <div className="p-3 bg-white/5 border border-emerald-500/30 rounded-xl mb-3">
+              <span className="text-[10px] font-extrabold uppercase text-emerald-400 block tracking-wider">Akses Personel Mandiri</span>
+              <p className="text-xs font-bold text-white mt-0.5">{currentUser?.nama || 'Anggota Satlinmas'}</p>
+              <p className="text-[10px] text-slate-400 truncate">Wilayah: Desa {currentUser?.desaTugas || 'Barabai Timur'}</p>
+            </div>
 
-        {/* Section 2: Data Master */}
-        <div className="space-y-1.5 pt-2 border-t border-white/10">
-          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#F0B429] flex items-center gap-1.5">
-            <Database className="w-3 h-3 text-[#F0B429]" />
-            <span>Data Master</span>
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#F0B429] flex items-center gap-1.5">
+              <IdCard className="w-3.5 h-3.5 text-[#F0B429]" />
+              <span>Layanan Anggota Linmas</span>
+            </div>
+            {menuLinmasMandiri.map(renderMenuItem)}
           </div>
-          {menuMaster.map(renderMenuItem)}
-        </div>
+        ) : (
+          <>
+            {/* Operator Territory Notification */}
+            {isOperator && (
+              <div className="p-2.5 bg-blue-900/30 border border-blue-500/30 rounded-xl mb-1">
+                <span className="text-[9px] font-extrabold uppercase text-blue-300 block tracking-wider">Wilayah Penugasan Operator</span>
+                <p className="text-xs font-bold text-white mt-0.5 truncate">
+                  Kecamatan {currentUser?.wilayahTugas || 'Barabai'}
+                </p>
+                <p className="text-[10px] text-blue-200/70 mt-0.5">Akses terbatas data wilayah tugas</p>
+              </div>
+            )}
+
+            {/* Section 1: Menu Operasional */}
+            <div className="space-y-1.5">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Menu Operasional
+              </div>
+              {menuOperasional.map(renderMenuItem)}
+            </div>
+
+            {/* Section 2: Perlindungan Masyarakat (Linmas) */}
+            <div className="space-y-1.5 pt-2 border-t border-white/10">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#F0B429] flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#F0B429]" />
+                <span>Perlindungan Masyarakat</span>
+              </div>
+              {menuLinmas.map(renderMenuItem)}
+            </div>
+
+            {/* Section 3: Data Master */}
+            <div className="space-y-1.5 pt-2 border-t border-white/10">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#F0B429] flex items-center gap-1.5">
+                <Database className="w-3 h-3 text-[#F0B429]" />
+                <span>{isAdmin ? 'Data Master Kabupaten' : 'Data Fasilitas'}</span>
+              </div>
+              {menuMaster.map(renderMenuItem)}
+            </div>
+
+            {/* Section 4: Laporan dan Statistik (SEBELUM AKUN & HAK AKSES) */}
+            <div className="space-y-1.5 pt-2 border-t border-white/10">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#F0B429] flex items-center gap-1.5">
+                <FileSpreadsheet className="w-3.5 h-3.5 text-[#F0B429]" />
+                <span>Laporan & Statistik</span>
+              </div>
+              {menuLaporan.map(renderMenuItem)}
+            </div>
+
+            {/* Section 5: Akun & Hak Akses (Profil Pengguna & Sub-Menu Langsung) */}
+            <div className="space-y-1.5 pt-2 border-t border-white/10">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#F0B429] flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-[#F0B429]" />
+                  <span>Akun & Hak Akses</span>
+                </div>
+              </div>
+
+              {/* Parent Item: Profil & Akun Pengguna dengan Collapse Toggle */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfilExpanded(!isProfilExpanded);
+                    onSelectTab('profil_pengguna');
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  className={`w-full text-left flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group cursor-pointer ${
+                    activeTab === 'profil_pengguna'
+                      ? 'bg-[#F0B429] text-[#0F2A4A] shadow-lg shadow-[#F0B429]/20 font-bold'
+                      : isProfilSectionActive
+                      ? 'bg-white/10 text-white font-bold'
+                      : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <UserCog className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
+                      activeTab === 'profil_pengguna' 
+                        ? 'text-[#0F2A4A]' 
+                        : isProfilSectionActive 
+                        ? 'text-[#F0B429]' 
+                        : 'text-slate-400'
+                    }`} />
+                    <span className="truncate">Profil & Akun Pengguna</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0 ml-1">
+                    <span className={`p-0.5 rounded transition-transform duration-200 ${isProfilExpanded ? 'rotate-180' : ''}`}>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                    </span>
+                  </div>
+                </button>
+
+                {/* Sub-Menu Akses Langsung */}
+                {isProfilExpanded && (
+                  <div className="ml-3 pl-3 border-l-2 border-white/10 space-y-1 mt-1.5 animate-fadeIn">
+                    {/* 1. Profil Akun Saya */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectTab('profil_saya');
+                        if (onCloseMobile) onCloseMobile();
+                      }}
+                      className={`w-full text-left flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all group cursor-pointer ${
+                        activeTab === 'profil_saya' || activeTab === 'profil_pengguna'
+                          ? 'bg-[#F0B429] text-[#0F2A4A] font-bold shadow-xs'
+                          : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <User className={`w-3.5 h-3.5 shrink-0 ${
+                          activeTab === 'profil_saya' || activeTab === 'profil_pengguna' 
+                            ? 'text-[#0F2A4A]' 
+                            : 'text-slate-400 group-hover:text-[#F0B429]'
+                        }`} />
+                        <span className="truncate">Profil Saya</span>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                        activeTab === 'profil_saya' || activeTab === 'profil_pengguna'
+                          ? 'bg-[#0F2A4A] text-white'
+                          : 'bg-white/10 text-slate-400'
+                      }`}>
+                        Pribadi
+                      </span>
+                    </button>
+
+                    {/* 2. Admin Satpol PP (Kabupaten) - Khusus Admin */}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectTab('manajemen_pegawai');
+                          if (onCloseMobile) onCloseMobile();
+                        }}
+                        className={`w-full text-left flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all group cursor-pointer ${
+                          activeTab === 'manajemen_pegawai'
+                            ? 'bg-[#F0B429] text-[#0F2A4A] font-bold shadow-xs'
+                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Shield className={`w-3.5 h-3.5 shrink-0 ${
+                            activeTab === 'manajemen_pegawai' ? 'text-[#0F2A4A]' : 'text-purple-400 group-hover:text-purple-300'
+                          }`} />
+                          <span className="truncate">Admin Satpol PP</span>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                          activeTab === 'manajemen_pegawai'
+                            ? 'bg-[#0F2A4A] text-white'
+                            : 'bg-purple-900/60 text-purple-200 border border-purple-500/30'
+                        }`}>
+                          Dinas
+                        </span>
+                      </button>
+                    )}
+
+                    {/* 3. Akun Operator Kecamatan (11 Kecamatan HST) */}
+                    {(isAdmin || isOperator) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectTab('manajemen_kecamatan');
+                          if (onCloseMobile) onCloseMobile();
+                        }}
+                        className={`w-full text-left flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all group cursor-pointer ${
+                          activeTab === 'manajemen_kecamatan'
+                            ? 'bg-[#F0B429] text-[#0F2A4A] font-bold shadow-xs'
+                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Building2 className={`w-3.5 h-3.5 shrink-0 ${
+                            activeTab === 'manajemen_kecamatan' ? 'text-[#0F2A4A]' : 'text-blue-400 group-hover:text-blue-300'
+                          }`} />
+                          <span className="truncate">Akun Kecamatan</span>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                          activeTab === 'manajemen_kecamatan'
+                            ? 'bg-[#0F2A4A] text-[#F0B429]'
+                            : 'bg-blue-900/60 text-blue-200 border border-blue-500/30'
+                        }`}>
+                          11 Kec
+                        </span>
+                      </button>
+                    )}
+
+                    {/* 4. Login Akun Linmas */}
+                    {(isAdmin || isOperator) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectTab('manajemen_linmas');
+                          if (onCloseMobile) onCloseMobile();
+                        }}
+                        className={`w-full text-left flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all group cursor-pointer ${
+                          activeTab === 'manajemen_linmas'
+                            ? 'bg-[#F0B429] text-[#0F2A4A] font-bold shadow-xs'
+                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${
+                            activeTab === 'manajemen_linmas' ? 'text-[#0F2A4A]' : 'text-emerald-400 group-hover:text-emerald-300'
+                          }`} />
+                          <span className="truncate">Login Akun Linmas</span>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                          activeTab === 'manajemen_linmas'
+                            ? 'bg-[#0F2A4A] text-white'
+                            : 'bg-emerald-900/60 text-emerald-200 border border-emerald-500/30'
+                        }`}>
+                          {counts.satlinmas || '90'}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </nav>
 
       {/* Footer Info / Command Center & External Navigation */}
@@ -141,7 +471,9 @@ export default function Sidebar({
         <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-[11px] font-semibold text-slate-300">Posko Komando Barabai</span>
+            <span className="text-[11px] font-semibold text-slate-300">
+              {isLinmas ? 'Siskamling Barabai Timur' : isOperator ? `Posko Kec. ${currentUser?.wilayahTugas || 'Barabai'}` : 'Posko Komando Satpol PP HST'}
+            </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-0.5">Layanan Darurat: (0517) 41234</p>
         </div>
@@ -175,7 +507,7 @@ export default function Sidebar({
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-72 shrink-0 h-screen sticky top-0 border-r border-[#14304F]">
+      <aside className="hidden lg:block w-72 shrink-0 h-screen sticky top-0 border-r border-[#14304F] print:hidden">
         {content}
       </aside>
 
