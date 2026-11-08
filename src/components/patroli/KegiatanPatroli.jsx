@@ -21,7 +21,11 @@ import {
   Users,
   AlertTriangle,
   Flame,
-  FileText
+  FileText,
+  Camera,
+  Image as ImageIcon,
+  UploadCloud,
+  UserCheck
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import { KECAMATAN_HST } from '../../data/mockData';
@@ -29,6 +33,7 @@ import { saveKegiatanPatroli, deleteKegiatanPatroli } from '../../data/storageSe
 
 export default function KegiatanPatroli({ 
   kegiatanList = [], 
+  satlinmasList = [],
   onRefreshData, 
   wilayahList = KECAMATAN_HST,
   assignedKecamatan = null,
@@ -53,6 +58,8 @@ export default function KegiatanPatroli({
   const [selectedKegiatan, setSelectedKegiatan] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [isLockingGps, setIsLockingGps] = useState(false);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [isManualPelapor, setIsManualPelapor] = useState(false);
 
   // Form State - Matches uploaded screenshot precisely!
   const [formData, setFormData] = useState({
@@ -67,11 +74,13 @@ export default function KegiatanPatroli({
     petugasPelapor: isLinmas 
       ? (currentUser?.nama ? `${currentUser.nama} (Satlinmas)` : 'Muhammad Arsyad (Satlinmas)') 
       : (currentUser?.nama || 'Petugas Satpol PP'),
+    nikPelapor: '',
     jumlahPersonel: isLinmas ? 1 : 4,
     lat: -2.5855,
     lng: 115.3815,
     hasilPatroli: '',
-    tindakanDiambil: ''
+    tindakanDiambil: '',
+    fotoDokumentasi: []
   });
 
   // Unique IDs for accessibility
@@ -85,6 +94,99 @@ export default function KegiatanPatroli({
     const foundKec = wilayahList.find(k => k.nama.toLowerCase() === (formData.kecamatan || '').toLowerCase());
     return foundKec ? foundKec.desa : [];
   }, [formData.kecamatan, wilayahList]);
+
+  // Anggota Linmas Terdaftar di Kecamatan & Desa terpilih dari Database
+  const availableLinmas = React.useMemo(() => {
+    if (!satlinmasList || satlinmasList.length === 0) {
+      return { inDesa: [], otherInKec: [], allInKec: [], totalCount: 0 };
+    }
+    const curKec = (formData.kecamatan || '').trim().toLowerCase();
+    const curDesa = (formData.desaKelurahan || '').trim().toLowerCase();
+
+    const inKec = satlinmasList.filter(s => (s.kecamatan || '').trim().toLowerCase() === curKec);
+    const inDesa = inKec.filter(s => (s.desaKelurahan || '').trim().toLowerCase() === curDesa);
+    const otherInKec = inKec.filter(s => (s.desaKelurahan || '').trim().toLowerCase() !== curDesa);
+
+    return {
+      inDesa,
+      otherInKec,
+      allInKec: inKec,
+      totalCount: inKec.length
+    };
+  }, [satlinmasList, formData.kecamatan, formData.desaKelurahan]);
+
+  // Helper Kompresi & Upload Foto Lapangan (Maks 4 Gambar, resize max 1000px agar ringan)
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1000;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const currentPhotos = formData.fotoDokumentasi || [];
+    const remainingSlots = 4 - currentPhotos.length;
+
+    if (remainingSlots <= 0) {
+      alert('Maksimal 4 foto dokumentasi temuan lapangan.');
+      return;
+    }
+
+    const filesToProcess = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      alert(`Hanya ${remainingSlots} foto yang dapat ditambahkan (batas maksimal 4 foto).`);
+    }
+
+    setIsUploadingPhotos(true);
+    try {
+      const base64List = await Promise.all(filesToProcess.map(f => compressImage(f)));
+      setFormData(prev => ({
+        ...prev,
+        fotoDokumentasi: [...(prev.fotoDokumentasi || []), ...base64List].slice(0, 4)
+      }));
+    } catch (err) {
+      console.error('Error processing photos:', err);
+      alert('Gagal memproses file foto.');
+    } finally {
+      setIsUploadingPhotos(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemovePhoto = (indexToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      fotoDokumentasi: (prev.fotoDokumentasi || []).filter((_, idx) => idx !== indexToRemove)
+    }));
+  };
 
   // Scoped Data by Role (Anggota Linmas melihat riwayat sendiri, Operator melihat wilayahnya, Admin melihat seluruh HST)
   const linmasName = currentUser?.nama || 'Muhammad Arsyad';
@@ -138,9 +240,22 @@ export default function KegiatanPatroli({
   const handleOpenAddModal = () => {
     const curKec = isLinmas ? (currentUser?.wilayahTugas || 'Barabai') : (assignedKecamatan || 'Barabai');
     const curDesa = isLinmas ? (currentUser?.desaTugas || 'Barabai Timur') : 'Barabai Timur';
+
+    // Cari anggota linmas di database sesuai desa/kecamatan terpilih
+    const matchingLinmas = satlinmasList.find(s => 
+      (s.kecamatan || '').toLowerCase() === curKec.toLowerCase() && 
+      (s.desaKelurahan || '').toLowerCase() === curDesa.toLowerCase()
+    ) || satlinmasList.find(s => 
+      (s.kecamatan || '').toLowerCase() === curKec.toLowerCase()
+    );
+
     const defaultPetugas = isLinmas 
       ? (currentUser?.nama ? `${currentUser.nama} (Anggota Satlinmas)` : 'Muhammad Arsyad (Anggota Satlinmas)') 
-      : (currentUser?.nama || 'Bripda M. Afifi / Kasie Linmas');
+      : (matchingLinmas ? matchingLinmas.nama : (currentUser?.nama || 'Petugas Satpol PP'));
+
+    const defaultNik = isLinmas 
+      ? (currentUser?.nik || '') 
+      : (matchingLinmas?.nik || '');
 
     setFormData({
       id: null,
@@ -152,12 +267,15 @@ export default function KegiatanPatroli({
       desaKelurahan: curDesa,
       lokasiSpesifik: `Pos Ronda RT ${isLinmas ? '04' : '01'} Desa ${curDesa}`,
       petugasPelapor: defaultPetugas,
+      nikPelapor: defaultNik,
       jumlahPersonel: isLinmas ? 1 : 4,
       lat: -2.5855,
       lng: 115.3815,
       hasilPatroli: '',
-      tindakanDiambil: isLinmas ? 'Monitoring keamanan lingkungan RT/RW dan patroli keliling.' : ''
+      tindakanDiambil: isLinmas ? 'Monitoring keamanan lingkungan RT/RW dan patroli keliling.' : '',
+      fotoDokumentasi: []
     });
+    setIsManualPelapor(false);
     setIsFormModalOpen(true);
   };
 
@@ -172,12 +290,15 @@ export default function KegiatanPatroli({
       desaKelurahan: item.desaKelurahan || 'Barabai Timur',
       lokasiSpesifik: item.lokasiSpesifik || '',
       petugasPelapor: item.petugasPelapor || '',
+      nikPelapor: item.nikPelapor || '',
       jumlahPersonel: item.jumlahPersonel || 4,
       lat: item.lat || -2.79025,
       lng: item.lng || 115.25698,
       hasilPatroli: item.hasilPatroli || '',
-      tindakanDiambil: item.tindakanDiambil || ''
+      tindakanDiambil: item.tindakanDiambil || '',
+      fotoDokumentasi: Array.isArray(item.fotoDokumentasi) ? item.fotoDokumentasi : []
     });
+    setIsManualPelapor(false);
     setIsFormModalOpen(true);
   };
 
@@ -227,6 +348,10 @@ export default function KegiatanPatroli({
     }
     if (!formData.hasilPatroli.trim()) {
       alert('Hasil Patroli / Temuan Lapangan wajib diisi.');
+      return;
+    }
+    if (!formData.petugasPelapor || !formData.petugasPelapor.trim()) {
+      alert('Petugas Pelapor wajib dipilih dari database Linmas atau diisi.');
       return;
     }
 
@@ -628,11 +753,19 @@ export default function KegiatanPatroli({
                           <p className="line-clamp-2 text-slate-700" title={item.hasilPatroli}>
                             {item.hasilPatroli}
                           </p>
-                          {item.tindakanDiambil && (
-                            <p className="text-[10px] text-emerald-700 italic mt-0.5 line-clamp-1" title={item.tindakanDiambil}>
-                              Tindakan: {item.tindakanDiambil}
-                            </p>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            {item.tindakanDiambil && (
+                              <p className="text-[10px] text-emerald-700 italic line-clamp-1" title={item.tindakanDiambil}>
+                                Tindakan: {item.tindakanDiambil}
+                              </p>
+                            )}
+                            {item.fotoDokumentasi && item.fotoDokumentasi.length > 0 && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200">
+                                <Camera className="w-3 h-3 text-blue-600" />
+                                <span>{item.fotoDokumentasi.length} Foto</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Actions */}
@@ -680,8 +813,24 @@ export default function KegiatanPatroli({
           {filteredList.map((item) => (
             <div
               key={item.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
+              className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
             >
+              {/* Photo Banner jika ada foto dokumentasi */}
+              {item.fotoDokumentasi && item.fotoDokumentasi.length > 0 && (
+                <div className="relative h-36 w-full bg-slate-900 overflow-hidden">
+                  <img
+                    src={item.fotoDokumentasi[0]}
+                    alt={item.judulPatroli}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/70 text-white backdrop-blur-xs flex items-center gap-1 border border-white/20">
+                    <Camera className="w-3 h-3 text-emerald-400" />
+                    <span>{item.fotoDokumentasi.length} Foto</span>
+                  </span>
+                </div>
+              )}
+
               <div className="bg-gradient-to-r from-[#0F2A4A] via-[#14365D] to-[#0A1F36] p-4 text-white">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -905,10 +1054,22 @@ export default function KegiatanPatroli({
                         const newKec = e.target.value;
                         const foundKec = wilayahList.find(k => k.nama.toLowerCase() === newKec.toLowerCase());
                         const firstDesa = foundKec && foundKec.desa && foundKec.desa[0] ? foundKec.desa[0] : '';
+                        
+                        const matchingLinmas = satlinmasList.find(s => 
+                          (s.kecamatan || '').toLowerCase() === newKec.toLowerCase() && 
+                          (s.desaKelurahan || '').toLowerCase() === firstDesa.toLowerCase()
+                        ) || satlinmasList.find(s => 
+                          (s.kecamatan || '').toLowerCase() === newKec.toLowerCase()
+                        );
+
                         setFormData({
                           ...formData,
                           kecamatan: newKec,
-                          desaKelurahan: firstDesa
+                          desaKelurahan: firstDesa,
+                          ...(isLinmas ? {} : {
+                            petugasPelapor: matchingLinmas ? matchingLinmas.nama : '',
+                            nikPelapor: matchingLinmas ? matchingLinmas.nik : ''
+                          })
                         });
                       }}
                       className={`w-full px-3 py-2 border rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden ${
@@ -929,7 +1090,22 @@ export default function KegiatanPatroli({
                     </label>
                     <select
                       value={formData.desaKelurahan}
-                      onChange={(e) => setFormData({ ...formData, desaKelurahan: e.target.value })}
+                      onChange={(e) => {
+                        const newDesa = e.target.value;
+                        const matchingLinmas = satlinmasList.find(s => 
+                          (s.kecamatan || '').toLowerCase() === (formData.kecamatan || '').toLowerCase() && 
+                          (s.desaKelurahan || '').toLowerCase() === newDesa.toLowerCase()
+                        );
+
+                        setFormData({
+                          ...formData,
+                          desaKelurahan: newDesa,
+                          ...(isLinmas ? {} : {
+                            petugasPelapor: matchingLinmas ? matchingLinmas.nama : formData.petugasPelapor,
+                            nikPelapor: matchingLinmas ? matchingLinmas.nik : formData.nikPelapor
+                          })
+                        });
+                      }}
                       className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
                     >
                       {availableDesa.map(d => (
@@ -953,35 +1129,115 @@ export default function KegiatanPatroli({
                   />
                 </div>
 
-                {/* 5. PETUGAS PELAPOR & JUMLAH PERSONEL IKUT */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                  <div className="sm:col-span-8">
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-slate-800">
-                        Petugas Pelapor
+                {/* 5. PETUGAS PELAPOR DARI DATABASE LINMAS TERDAFTAR & JUMLAH PERSONEL */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                  <div className="sm:col-span-8 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Petugas Pelapor (Satlinmas Terdaftar)</span>
                       </label>
-                      {isLinmas && (
+                      {isLinmas ? (
                         <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                           Identitas Terverifikasi
                         </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsManualPelapor(!isManualPelapor)}
+                          className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
+                        >
+                          {isManualPelapor ? 'Pilih dari Database Linmas' : 'Input Petugas Manual'}
+                        </button>
                       )}
                     </div>
-                    <input
-                      type="text"
-                      readOnly={isLinmas}
-                      value={formData.petugasPelapor}
-                      onChange={(e) => setFormData({ ...formData, petugasPelapor: e.target.value })}
-                      placeholder="Nama Anggota / Satuan Pelapor"
-                      className={`w-full px-3 py-2 border rounded-xl text-xs font-medium ${
-                        isLinmas 
-                          ? 'bg-slate-100 border-slate-300 text-slate-800 font-bold cursor-not-allowed'
-                          : 'bg-slate-50/50 border-slate-300 text-slate-800 focus:ring-2 focus:ring-teal-500/20'
-                      }`}
-                    />
+
+                    {isLinmas ? (
+                      <input
+                        type="text"
+                        readOnly
+                        value={formData.petugasPelapor}
+                        className="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 cursor-not-allowed"
+                      />
+                    ) : isManualPelapor ? (
+                      <div className="space-y-1">
+                        <input
+                          type="text"
+                          required
+                          value={formData.petugasPelapor}
+                          onChange={(e) => setFormData({ ...formData, petugasPelapor: e.target.value })}
+                          placeholder="Masukkan nama petugas / pelapor..."
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
+                        />
+                        <p className="text-[10px] text-slate-400">
+                          Mode manual aktif. Masukkan nama personel jika di luar daftar linmas.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <select
+                          value={formData.petugasPelapor}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '__MANUAL__') {
+                              setIsManualPelapor(true);
+                              return;
+                            }
+                            const found = satlinmasList.find(s => s.nama === val);
+                            setFormData({
+                              ...formData,
+                              petugasPelapor: val,
+                              nikPelapor: found?.nik || ''
+                            });
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
+                        >
+                          {availableLinmas.allInKec.length === 0 ? (
+                            <option value="">Belum ada data Linmas di Kec. {formData.kecamatan}</option>
+                          ) : (
+                            <>
+                              <option value="">-- Pilih Anggota Satlinmas Terdaftar --</option>
+                              {availableLinmas.inDesa.length > 0 && (
+                                <optgroup label={`--- Anggota Linmas Desa ${formData.desaKelurahan} (${availableLinmas.inDesa.length} Orang) ---`}>
+                                  {availableLinmas.inDesa.map(s => (
+                                    <option key={s.id || s.nik} value={s.nama}>
+                                      {s.nama} ({s.noRegistrasi || `NIK: ${s.nik ? s.nik.slice(-4) : '-'}`})
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {availableLinmas.otherInKec.length > 0 && (
+                                <optgroup label={`--- Anggota Linmas Lainnya di Kec. ${formData.kecamatan} (${availableLinmas.otherInKec.length} Orang) ---`}>
+                                  {availableLinmas.otherInKec.map(s => (
+                                    <option key={s.id || s.nik} value={s.nama}>
+                                      {s.nama} - Desa {s.desaKelurahan}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                            </>
+                          )}
+                          <option value="__MANUAL__">+ Input Petugas Lainnya (Manual)...</option>
+                        </select>
+
+                        {/* Info Ringkas Anggota Terpilih */}
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Database: {availableLinmas.inDesa.length} personel di Desa {formData.desaKelurahan}</span>
+                          </span>
+                          {formData.nikPelapor && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono">
+                              NIK: {formData.nikPelapor}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="sm:col-span-4">
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                  <div className="sm:col-span-4 space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-800">
                       Jumlah Personel Ikut
                     </label>
                     <input
@@ -991,6 +1247,9 @@ export default function KegiatanPatroli({
                       onChange={(e) => setFormData({ ...formData, jumlahPersonel: parseInt(e.target.value) || 1 })}
                       className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-center text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
                     />
+                    <p className="text-[10px] text-slate-400 text-center">
+                      Termasuk pelapor & regu
+                    </p>
                   </div>
                 </div>
 
@@ -1021,6 +1280,75 @@ export default function KegiatanPatroli({
                     placeholder="Contoh: Menghimbau remaja pulang tertib dan koordinasi dengan Polsek"
                     className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
                   />
+                </div>
+
+                {/* 8. DOKUMENTASI FOTO HASIL / TEMUAN LAPANGAN (MAKSIMAL 4 GAMBAR) */}
+                <div className="space-y-2 pt-1 border-t border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-emerald-600" />
+                      <span>Foto Dokumentasi / Temuan Lapangan</span>
+                    </label>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      (formData.fotoDokumentasi || []).length === 4
+                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}>
+                      {(formData.fotoDokumentasi || []).length} / 4 Foto
+                    </span>
+                  </div>
+
+                  {/* Thumbnail Previews & Upload Box */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {(formData.fotoDokumentasi || []).map((foto, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border-2 border-emerald-500/40 bg-slate-100 shadow-xs group">
+                        <img 
+                          src={foto} 
+                          alt={`Dokumentasi ${idx + 1}`} 
+                          className="w-full h-full object-cover" 
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto(idx)}
+                            className="p-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white shadow-md transition-transform hover:scale-110 cursor-pointer"
+                            title="Hapus foto ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-xs">
+                          Foto {idx + 1}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Upload Box (jika belum mencapai 4 gambar) */}
+                    {(formData.fotoDokumentasi || []).length < 4 && (
+                      <label className="relative aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 flex flex-col items-center justify-center p-2 text-center transition-all cursor-pointer group">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handlePhotoUpload}
+                          disabled={isUploadingPhotos}
+                          className="sr-only"
+                        />
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 group-hover:bg-emerald-200 text-emerald-700 flex items-center justify-center mb-1 transition-colors">
+                          <Plus className="w-4 h-4" />
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-700 group-hover:text-emerald-800">
+                          {isUploadingPhotos ? 'Memproses...' : 'Upload Foto'}
+                        </span>
+                        <span className="text-[9px] text-slate-400 mt-0.5 leading-tight">
+                          Ambil / Pilih (Maks 4)
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 italic">
+                    * Ambil foto langsung dari kamera perangkat atau pilih file galeri (maksimal 4 gambar).
+                  </p>
                 </div>
 
                 {/* 8. SUBMIT BUTTON (SESUAI GAMBAR SCREENSHOT) */}
@@ -1110,6 +1438,42 @@ export default function KegiatanPatroli({
               <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-200 text-xs space-y-1">
                 <span className="font-bold text-emerald-900 block">Tindakan Yang Diambil:</span>
                 <p className="text-slate-700">{selectedKegiatan.tindakanDiambil}</p>
+              </div>
+            )}
+
+            {/* Foto Hasil & Temuan Lapangan */}
+            {selectedKegiatan.fotoDokumentasi && selectedKegiatan.fotoDokumentasi.length > 0 && (
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-emerald-600" />
+                    <span>Foto Dokumentasi / Temuan Lapangan ({selectedKegiatan.fotoDokumentasi.length} Foto)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Klik foto untuk perbesar</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {selectedKegiatan.fotoDokumentasi.map((foto, idx) => (
+                    <a
+                      key={idx}
+                      href={foto}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group relative block aspect-square rounded-xl overflow-hidden border border-slate-200 bg-black/5 hover:border-emerald-500 transition-all shadow-xs"
+                    >
+                      <img
+                        src={foto}
+                        alt={`Temuan ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-xs">
+                        Foto {idx + 1}
+                      </span>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
 

@@ -118,7 +118,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => getAuthSession());
   const [currentView, setCurrentView] = useState(() => (getAuthSession() ? 'app' : 'landing'));
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('kegiatan_patroli');
   const [activeRole, setActiveRole] = useState(() => {
     const session = getAuthSession();
     return session?.peran || 'user';
@@ -505,6 +505,7 @@ export default function App() {
           {activeTab === 'kegiatan_patroli' && (
             <KegiatanPatroli
               kegiatanList={kegiatanPatroliList}
+              satlinmasList={satlinmasList}
               onRefreshData={refreshAllData}
               wilayahList={wilayahList}
               assignedKecamatan={assignedKecamatan}
