@@ -175,7 +175,11 @@ export default function App() {
         if (liveData.poskamling) setPoskamlingList(liveData.poskamling);
         if (liveData.kegiatanPatroli) setKegiatanPatroliList(liveData.kegiatanPatroli);
         if (liveData.pegawai) setPegawaiList(liveData.pegawai);
-        if (liveData.profilPengguna) setProfilPenggunaList(liveData.profilPengguna);
+        if (liveData.profilPengguna && liveData.profilPengguna.length > 0) {
+          setProfilPenggunaList(liveData.profilPengguna);
+        } else {
+          setProfilPenggunaList(getProfilPenggunaList());
+        }
         if (liveData.fasilitasPoskamling) setFasilitasPoskamlingList(liveData.fasilitasPoskamling);
         if (liveData.wilayah) setWilayahList(liveData.wilayah);
       }

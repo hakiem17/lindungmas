@@ -464,7 +464,7 @@ export default function ProfilPengguna({
 
     try {
       const payload = {
-        id: editingLinmasUser ? editingLinmasUser.id : undefined,
+        id: editingLinmasUser ? editingLinmasUser.id : `usr-linmas-${Date.now().toString().slice(-6)}`,
         nama: formLinmasNama.trim(),
         nip: formLinmasNik.trim(), // simpan NIK di kolom NIP/username
         nik: formLinmasNik.trim(),
@@ -477,6 +477,7 @@ export default function ProfilPengguna({
         regu: formLinmasJabatan.includes('Danru') ? 'Danru' : 'Anggota',
         noHp: formLinmasNoHp.trim(),
         email: formLinmasEmail.trim() || `${formLinmasNik.trim()}@linmas.hstkab.go.id`,
+        password: formLinmasPassword || 'LinmasHST2026!',
         foto: formLinmasFoto.trim() || null,
         status: formLinmasStatus
       };

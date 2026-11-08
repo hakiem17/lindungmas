@@ -309,8 +309,17 @@ export const fetchDatabaseData = async () => {
     if (!resPegawai.error && resPegawai.data) {
       safeSetItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(mappedPegawai));
     }
-    if (!resProfil.error && resProfil.data) {
-      safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(mappedProfil));
+    // Update PROFIL_PENGGUNA cache dengan aman (pertahankan akun linmas / lokal yang telah dibuat)
+    let finalProfil = getProfilPenggunaList();
+    if (mappedProfil && mappedProfil.length > 0) {
+      const merged = [...mappedProfil];
+      finalProfil.forEach(lp => {
+        if (!merged.some(mp => (mp.id && mp.id === lp.id) || (mp.nik && mp.nik === lp.nik) || (mp.nip && mp.nip === lp.nip))) {
+          merged.push(lp);
+        }
+      });
+      finalProfil = merged;
+      safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(finalProfil));
     }
     if (!resFasilitas.error && resFasilitas.data) safeSetItem(STORAGE_KEYS.FASILITAS_POSKAMLING, JSON.stringify(mappedFasilitas));
     if (!resWilayah.error && resWilayah.data) safeSetItem(STORAGE_KEYS.WILAYAH, JSON.stringify(mappedWilayah));
@@ -337,7 +346,7 @@ export const fetchDatabaseData = async () => {
       poskamling: mappedPoskamling,
       kegiatanPatroli: mappedPatroli,
       pegawai: mappedPegawai,
-      profilPengguna: mappedProfil,
+      profilPengguna: finalProfil,
       fasilitasPoskamling: mappedFasilitas,
       wilayah: mappedWilayah,
       auditLogs: mappedAudit,
@@ -1204,6 +1213,54 @@ export const deletePegawai = (id) => {
 // ==============================================================================
 // PROFIL PENGGUNA & MANAJEMEN AKUN SISTEM (TERPISAH DARI MASTER PEGAWAI)
 // ==============================================================================
+export const DEFAULT_PROFIL_PENGGUNA = [
+  {
+    id: '02bc4240-95e9-4523-97c7-e786f8240d0e',
+    nama: 'Drs. Ahmad Fathoni',
+    nip: '19720217 199203 1 006',
+    nik: '6307061702720001',
+    jabatan: 'Kepala Satuan Polisi Pamong Praja',
+    pangkat: 'Pembina Utama Muda / IV / c',
+    peran: 'admin_kabupaten',
+    wilayahTugas: 'Seluruh Kabupaten Hulu Sungai Tengah',
+    desaTugas: null,
+    noHp: '0821-5008-1010',
+    email: '197202171992031006@satpolpp.hstkab.go.id',
+    status: 'Aktif'
+  },
+  {
+    id: 'usr-op-001',
+    nama: 'M. Rizky Pratama, S.H.',
+    nip: '19850614 201001 1 012',
+    nik: '6307061406850002',
+    jabatan: 'Operator Wilayah Kec. Barabai',
+    pangkat: 'Penata Muda (III/a)',
+    peran: 'operator_kecamatan',
+    wilayahTugas: 'Barabai',
+    desaTugas: 'Barabai Timur',
+    noHp: '0813-4455-6677',
+    email: 'operator.barabai@satpolpp.hstkab.go.id',
+    status: 'Aktif'
+  },
+  {
+    id: 'slm-001',
+    nama: 'Muhammad Arsyad',
+    nip: '6307061205840001',
+    nik: '6307061205840001',
+    noRegistrasi: '63.07/SLM/2026/001',
+    jabatan: 'Anggota Satlinmas Barabai Timur',
+    pangkat: 'Satlinmas',
+    regu: 'Danru',
+    peran: 'anggota_linmas',
+    wilayahTugas: 'Barabai',
+    desaTugas: 'Barabai Timur',
+    noHp: '0812-5544-3322',
+    email: '6307061205840001@linmas.hstkab.go.id',
+    password: 'LinmasHST2026!',
+    status: 'Aktif'
+  }
+];
+
 export const getProfilPenggunaList = () => {
   initStorage();
   try {
@@ -1213,117 +1270,102 @@ export const getProfilPenggunaList = () => {
       if (Array.isArray(data) && data.length > 0) return data;
     }
   } catch (e) {}
-  return [];
+  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(DEFAULT_PROFIL_PENGGUNA));
+  return DEFAULT_PROFIL_PENGGUNA;
 };
 
 export const saveProfilPengguna = (userData) => {
-  const list = getProfilPenggunaList();
+  let list = getProfilPenggunaList();
 
-  if (userData.id) {
-    const idx = list.findIndex(u => u.id === userData.id || (userData.nip && u.nip === userData.nip));
-    if (idx >= 0) {
-      list[idx] = {
-        ...list[idx],
-        ...userData,
-        updatedAt: new Date().toISOString()
+  // Cari apakah user sudah ada (berdasarkan id, NIP, atau NIK)
+  const idx = list.findIndex(u => 
+    (userData.id && u.id === userData.id) || 
+    (userData.nip && u.nip === userData.nip) ||
+    (userData.nik && u.nik === userData.nik)
+  );
+
+  let targetUser;
+  if (idx >= 0) {
+    list[idx] = {
+      ...list[idx],
+      ...userData,
+      updatedAt: new Date().toISOString()
+    };
+    targetUser = list[idx];
+    addAuditLog({
+      aksi: 'UBAH',
+      modul: 'Profil Pengguna',
+      target: `${targetUser.nama} (${targetUser.peran})`,
+      detail: `Pembaruan akun & hak akses profil pengguna ${targetUser.nama} (${targetUser.peran}).`
+    });
+  } else {
+    // Buat akun baru
+    targetUser = {
+      id: userData.id || `usr-${Date.now().toString().slice(-6)}`,
+      nama: userData.nama || '',
+      nip: userData.nip || userData.nik || userData.username || `USR-${Date.now().toString().slice(-4)}`,
+      nik: userData.nik || userData.nip || null,
+      noRegistrasi: userData.noRegistrasi || null,
+      pangkat: userData.pangkat || (userData.peran === 'anggota_linmas' ? 'Satlinmas' : 'Pengatur (II/c)'),
+      jabatan: userData.jabatan || (userData.peran === 'anggota_linmas' ? 'Anggota Satlinmas' : 'Operator Sistem'),
+      regu: userData.regu || '-',
+      peran: userData.peran || 'anggota_linmas',
+      wilayahTugas: userData.wilayahTugas || 'Barabai',
+      desaTugas: userData.desaTugas || null,
+      noHp: userData.noHp || '',
+      email: userData.email || `${(userData.nik || userData.nip || 'user').replace(/\s+/g, '')}@linmas.hstkab.go.id`,
+      password: userData.password || 'LinmasHST2026!',
+      foto: userData.foto || null,
+      status: userData.status || 'Aktif',
+      keterangan: userData.keterangan || null,
+      createdAt: new Date().toISOString()
+    };
+    list = [targetUser, ...list];
+    addAuditLog({
+      aksi: 'TAMBAH',
+      modul: 'Profil Pengguna',
+      target: `${targetUser.nama} (${targetUser.peran})`,
+      detail: `Pembuatan akun pengguna baru ${targetUser.nama} peran ${targetUser.peran} wilayah ${targetUser.wilayahTugas}.`
+    });
+  }
+
+  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
+
+  // Sinkronkan ke Supabase Live Database jika terkonfigurasi (defensive)
+  if (isSupabaseConfigured()) {
+    try {
+      const payload = {
+        nama: targetUser.nama,
+        nip: targetUser.nip,
+        nik: targetUser.nik || null,
+        no_registrasi: targetUser.noRegistrasi || null,
+        pangkat: targetUser.pangkat,
+        jabatan: targetUser.jabatan,
+        regu: targetUser.regu || null,
+        peran: targetUser.peran || 'anggota_linmas',
+        wilayah_tugas: targetUser.wilayahTugas || 'Barabai',
+        desa_tugas: targetUser.desaTugas || null,
+        no_hp: targetUser.noHp || '',
+        email: targetUser.email,
+        foto_url: targetUser.foto || null,
+        status: targetUser.status || 'Aktif'
       };
-      safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
-
-      addAuditLog({
-        aksi: 'UBAH',
-        modul: 'Profil Pengguna',
-        target: `${list[idx].nama} (${list[idx].peran})`,
-        detail: `Pembaruan akun & hak akses profil pengguna ${list[idx].nama} (${list[idx].peran}).`
-      });
-
-      // Sinkronkan ke Supabase Live Database
-      if (isSupabaseConfigured()) {
-        const payload = {
-          nama: list[idx].nama,
-          nip: list[idx].nip,
-          nik: list[idx].nik || null,
-          no_registrasi: list[idx].noRegistrasi || null,
-          pangkat: list[idx].pangkat,
-          jabatan: list[idx].jabatan,
-          regu: list[idx].regu || null,
-          peran: list[idx].peran || 'admin_kabupaten',
-          wilayah_tugas: list[idx].wilayahTugas || 'Seluruh Kabupaten Hulu Sungai Tengah',
-          desa_tugas: list[idx].desaTugas || null,
-          no_hp: list[idx].noHp || '',
-          email: list[idx].email,
-          foto_url: list[idx].foto || null,
-          status: list[idx].status || 'Aktif'
-        };
-        if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
-          supabase.from('profil_pengguna').update(payload).eq('id', list[idx].id).then();
-        } else {
-          supabase.from('profil_pengguna').upsert([payload], { onConflict: 'nip' }).then();
-        }
+      const isValidUuid = typeof targetUser.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUser.id);
+      if (isValidUuid) {
+        supabase.from('profil_pengguna').update(payload).eq('id', targetUser.id).then();
       }
-
-      return list[idx];
+    } catch (err) {
+      console.warn('Supabase profil_pengguna sync notice:', err);
     }
   }
 
-  // Create new user profile / account
-  const newUser = {
-    id: `usr-${Date.now().toString().slice(-6)}`,
-    nama: userData.nama || '',
-    nip: userData.nip || userData.username || `USR-${Date.now().toString().slice(-4)}`,
-    nik: userData.nik || null,
-    noRegistrasi: userData.noRegistrasi || null,
-    pangkat: userData.pangkat || 'Pengatur (II/c)',
-    jabatan: userData.jabatan || 'Operator Sistem LINDUNGMAS',
-    regu: userData.regu || '-',
-    peran: userData.peran || 'operator_kecamatan',
-    wilayahTugas: userData.wilayahTugas || 'Barabai',
-    desaTugas: userData.desaTugas || null,
-    noHp: userData.noHp || '',
-    email: userData.email || `${(userData.nip || 'user').replace(/\s+/g, '')}@satpolpp.hstkab.go.id`,
-    foto: userData.foto || null,
-    status: userData.status || 'Aktif',
-    keterangan: userData.keterangan || null,
-    createdAt: new Date().toISOString()
-  };
-
-  list.unshift(newUser);
-  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
-
-  addAuditLog({
-    aksi: 'TAMBAH',
-    modul: 'Profil Pengguna',
-    target: `${newUser.nama} (${newUser.peran})`,
-    detail: `Pembuatan akun pengguna baru ${newUser.nama} peran ${newUser.peran} wilayah ${newUser.wilayahTugas}.`
-  });
-
-  // Sinkronkan ke Supabase Live Database
-  if (isSupabaseConfigured()) {
-    const payload = {
-      nama: newUser.nama,
-      nip: newUser.nip,
-      nik: newUser.nik || null,
-      no_registrasi: newUser.noRegistrasi || null,
-      pangkat: newUser.pangkat,
-      jabatan: newUser.jabatan,
-      regu: newUser.regu || null,
-      peran: newUser.peran,
-      wilayah_tugas: newUser.wilayahTugas,
-      desa_tugas: newUser.desaTugas || null,
-      no_hp: newUser.noHp || '',
-      email: newUser.email,
-      foto_url: newUser.foto || null,
-      status: newUser.status || 'Aktif'
-    };
-    supabase.from('profil_pengguna').upsert([payload], { onConflict: 'nip' }).then();
-  }
-
-  return newUser;
+  return targetUser;
 };
 
 export const deleteProfilPengguna = (id) => {
   let list = getProfilPenggunaList();
-  const target = list.find(u => u.id === id);
-  list = list.filter(u => u.id !== id);
+  const target = list.find(u => u.id === id || u.nik === id || u.nip === id);
+  list = list.filter(u => u.id !== id && u.nik !== id && u.nip !== id);
   safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
 
   if (target) {
@@ -1335,11 +1377,12 @@ export const deleteProfilPengguna = (id) => {
     });
 
     if (isSupabaseConfigured()) {
-      if (id.includes('-') && id.length > 20) {
-        supabase.from('profil_pengguna').delete().eq('id', id).then();
-      } else if (target.nip) {
-        supabase.from('profil_pengguna').delete().eq('nip', target.nip).then();
-      }
+      try {
+        const isValidUuid = typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        if (isValidUuid) {
+          supabase.from('profil_pengguna').delete().eq('id', id).then();
+        }
+      } catch (e) {}
     }
   }
 
