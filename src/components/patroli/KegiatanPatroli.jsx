@@ -95,24 +95,18 @@ export default function KegiatanPatroli({
     return foundKec ? foundKec.desa : [];
   }, [formData.kecamatan, wilayahList]);
 
-  // Anggota Linmas Terdaftar di Kecamatan & Desa terpilih dari Database
+  // Anggota Linmas Terdaftar HANYA di Desa terpilih dari Database (tanpa desa lain)
   const availableLinmas = React.useMemo(() => {
     if (!satlinmasList || satlinmasList.length === 0) {
-      return { inDesa: [], otherInKec: [], allInKec: [], totalCount: 0 };
+      return [];
     }
     const curKec = (formData.kecamatan || '').trim().toLowerCase();
     const curDesa = (formData.desaKelurahan || '').trim().toLowerCase();
 
-    const inKec = satlinmasList.filter(s => (s.kecamatan || '').trim().toLowerCase() === curKec);
-    const inDesa = inKec.filter(s => (s.desaKelurahan || '').trim().toLowerCase() === curDesa);
-    const otherInKec = inKec.filter(s => (s.desaKelurahan || '').trim().toLowerCase() !== curDesa);
-
-    return {
-      inDesa,
-      otherInKec,
-      allInKec: inKec,
-      totalCount: inKec.length
-    };
+    return satlinmasList.filter(s => 
+      (s.kecamatan || '').trim().toLowerCase() === curKec &&
+      (s.desaKelurahan || '').trim().toLowerCase() === curDesa
+    );
   }, [satlinmasList, formData.kecamatan, formData.desaKelurahan]);
 
   // Helper Kompresi & Upload Foto Lapangan (Maks 4 Gambar, resize max 1000px agar ringan)
@@ -241,17 +235,15 @@ export default function KegiatanPatroli({
     const curKec = isLinmas ? (currentUser?.wilayahTugas || 'Barabai') : (assignedKecamatan || 'Barabai');
     const curDesa = isLinmas ? (currentUser?.desaTugas || 'Barabai Timur') : 'Barabai Timur';
 
-    // Cari anggota linmas di database sesuai desa/kecamatan terpilih
+    // Cari anggota linmas di database KHUSUS di desa terpilih
     const matchingLinmas = satlinmasList.find(s => 
       (s.kecamatan || '').toLowerCase() === curKec.toLowerCase() && 
       (s.desaKelurahan || '').toLowerCase() === curDesa.toLowerCase()
-    ) || satlinmasList.find(s => 
-      (s.kecamatan || '').toLowerCase() === curKec.toLowerCase()
     );
 
     const defaultPetugas = isLinmas 
       ? (currentUser?.nama ? `${currentUser.nama} (Anggota Satlinmas)` : 'Muhammad Arsyad (Anggota Satlinmas)') 
-      : (matchingLinmas ? matchingLinmas.nama : (currentUser?.nama || 'Petugas Satpol PP'));
+      : (matchingLinmas ? matchingLinmas.nama : '');
 
     const defaultNik = isLinmas 
       ? (currentUser?.nik || '') 
@@ -1058,8 +1050,6 @@ export default function KegiatanPatroli({
                         const matchingLinmas = satlinmasList.find(s => 
                           (s.kecamatan || '').toLowerCase() === newKec.toLowerCase() && 
                           (s.desaKelurahan || '').toLowerCase() === firstDesa.toLowerCase()
-                        ) || satlinmasList.find(s => 
-                          (s.kecamatan || '').toLowerCase() === newKec.toLowerCase()
                         );
 
                         setFormData({
@@ -1101,8 +1091,8 @@ export default function KegiatanPatroli({
                           ...formData,
                           desaKelurahan: newDesa,
                           ...(isLinmas ? {} : {
-                            petugasPelapor: matchingLinmas ? matchingLinmas.nama : formData.petugasPelapor,
-                            nikPelapor: matchingLinmas ? matchingLinmas.nik : formData.nikPelapor
+                            petugasPelapor: matchingLinmas ? matchingLinmas.nama : '',
+                            nikPelapor: matchingLinmas ? matchingLinmas.nik : ''
                           })
                         });
                       }}
@@ -1129,13 +1119,13 @@ export default function KegiatanPatroli({
                   />
                 </div>
 
-                {/* 5. PETUGAS PELAPOR DARI DATABASE LINMAS TERDAFTAR & JUMLAH PERSONEL */}
+                {/* 5. PETUGAS PELAPOR DARI DATABASE LINMAS DESA TERDAFTAR & JUMLAH PERSONEL */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
                   <div className="sm:col-span-8 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Petugas Pelapor (Satlinmas Terdaftar)</span>
+                        <span>Petugas Pelapor (Linmas Desa {formData.desaKelurahan})</span>
                       </label>
                       {isLinmas ? (
                         <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
@@ -1147,7 +1137,7 @@ export default function KegiatanPatroli({
                           onClick={() => setIsManualPelapor(!isManualPelapor)}
                           className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
                         >
-                          {isManualPelapor ? 'Pilih dari Database Linmas' : 'Input Petugas Manual'}
+                          {isManualPelapor ? 'Pilih dari Linmas Desa' : 'Input Petugas Manual'}
                         </button>
                       )}
                     </div>
@@ -1183,7 +1173,7 @@ export default function KegiatanPatroli({
                               setIsManualPelapor(true);
                               return;
                             }
-                            const found = satlinmasList.find(s => s.nama === val);
+                            const found = availableLinmas.find(s => s.nama === val);
                             setFormData({
                               ...formData,
                               petugasPelapor: val,
@@ -1192,29 +1182,16 @@ export default function KegiatanPatroli({
                           }}
                           className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
                         >
-                          {availableLinmas.allInKec.length === 0 ? (
-                            <option value="">Belum ada data Linmas di Kec. {formData.kecamatan}</option>
+                          {availableLinmas.length === 0 ? (
+                            <option value="">Belum ada Anggota Linmas terdaftar di Desa {formData.desaKelurahan}</option>
                           ) : (
                             <>
-                              <option value="">-- Pilih Anggota Satlinmas Terdaftar --</option>
-                              {availableLinmas.inDesa.length > 0 && (
-                                <optgroup label={`--- Anggota Linmas Desa ${formData.desaKelurahan} (${availableLinmas.inDesa.length} Orang) ---`}>
-                                  {availableLinmas.inDesa.map(s => (
-                                    <option key={s.id || s.nik} value={s.nama}>
-                                      {s.nama} ({s.noRegistrasi || `NIK: ${s.nik ? s.nik.slice(-4) : '-'}`})
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              )}
-                              {availableLinmas.otherInKec.length > 0 && (
-                                <optgroup label={`--- Anggota Linmas Lainnya di Kec. ${formData.kecamatan} (${availableLinmas.otherInKec.length} Orang) ---`}>
-                                  {availableLinmas.otherInKec.map(s => (
-                                    <option key={s.id || s.nik} value={s.nama}>
-                                      {s.nama} - Desa {s.desaKelurahan}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              )}
+                              <option value="">-- Pilih Anggota Linmas Desa {formData.desaKelurahan} ({availableLinmas.length} Orang) --</option>
+                              {availableLinmas.map(s => (
+                                <option key={s.id || s.nik} value={s.nama}>
+                                  {s.nama} ({s.noRegistrasi || `NIK: ${s.nik ? s.nik.slice(-4) : '-'}`})
+                                </option>
+                              ))}
                             </>
                           )}
                           <option value="__MANUAL__">+ Input Petugas Lainnya (Manual)...</option>
@@ -1222,9 +1199,17 @@ export default function KegiatanPatroli({
 
                         {/* Info Ringkas Anggota Terpilih */}
                         <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold flex items-center gap-1">
+                          <span className={`px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 border ${
+                            availableLinmas.length > 0 
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-amber-50 text-amber-800 border-amber-200'
+                          }`}>
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Database: {availableLinmas.inDesa.length} personel di Desa {formData.desaKelurahan}</span>
+                            <span>
+                              {availableLinmas.length > 0 
+                                ? `Database Desa ${formData.desaKelurahan}: ${availableLinmas.length} Personel Terdaftar` 
+                                : `Belum ada anggota terdaftar di Desa ${formData.desaKelurahan}`}
+                            </span>
                           </span>
                           {formData.nikPelapor && (
                             <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono">
