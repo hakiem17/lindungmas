@@ -16,10 +16,8 @@ const supabaseUrl =
   getEnv('SUPABASE_URL') || 
   'https://hgbtaojwqstxwolvhukp.supabase.co';
 
-// Menggunakan key dari environment (mendukung secret/service key untuk sinkronisasi live & publishable anon key)
+// Browser HANYA boleh menggunakan publishable (anon) key. Secret key dilarang di browser oleh Supabase SDK.
 const supabaseKey =
-  getEnv('VITE_SUPABASE_SECRET_KEY') ||
-  getEnv('SUPABASE_SECRET_KEY') ||
   getEnv('VITE_SUPABASE_ANON_KEY') ||
   getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') ||
   getEnv('SUPABASE_PUBLISHABLE_KEY') ||

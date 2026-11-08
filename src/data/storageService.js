@@ -1983,6 +1983,9 @@ export const saveKegiatanPatroli = async (data) => {
 
       if (error) {
         console.error('Supabase update error:', error);
+        if (error.code === '42501' || String(error.message).includes('row-level security')) {
+          throw new Error('RLS_POLICY_BLOCKED');
+        }
         throw new Error(error.message);
       }
 
@@ -2004,6 +2007,9 @@ export const saveKegiatanPatroli = async (data) => {
 
       if (error) {
         console.error('Supabase insert error:', error);
+        if (error.code === '42501' || String(error.message).includes('row-level security')) {
+          throw new Error('RLS_POLICY_BLOCKED');
+        }
         throw new Error(error.message);
       }
 
