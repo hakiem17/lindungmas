@@ -463,6 +463,13 @@ export default function ProfilPengguna({
     }
 
     try {
+      // Pas foto otomatis diambil dari data master satlinmas berdasarkan NIK / No Registrasi
+      const matchingLinmas = satlinmasList.find(s => 
+        (s.nik && s.nik === formLinmasNik.trim()) || 
+        (s.noRegistrasi && s.noRegistrasi === formLinmasNoReg.trim()) ||
+        (s.nama && s.nama.toLowerCase() === formLinmasNama.trim().toLowerCase())
+      );
+
       const payload = {
         id: editingLinmasUser ? editingLinmasUser.id : `usr-linmas-${Date.now().toString().slice(-6)}`,
         nama: formLinmasNama.trim(),
@@ -478,7 +485,7 @@ export default function ProfilPengguna({
         noHp: formLinmasNoHp.trim(),
         email: formLinmasEmail.trim() || `${formLinmasNik.trim()}@linmas.hstkab.go.id`,
         password: formLinmasPassword || 'LinmasHST2026!',
-        foto: formLinmasFoto.trim() || null,
+        foto: matchingLinmas?.pasFoto || editingLinmasUser?.foto || null,
         status: formLinmasStatus
       };
 
@@ -1838,6 +1845,12 @@ export default function ProfilPengguna({
                   ) : (
                     filteredLinmasUsers.map((user, idx) => {
                       const isDanru = (user.jabatan || '').toLowerCase().includes('danru');
+                      const matchingLinmas = satlinmasList.find(s => 
+                        (user.nik && s.nik === user.nik) || 
+                        (user.noRegistrasi && s.noRegistrasi === user.noRegistrasi) ||
+                        (s.nama && user.nama && s.nama.toLowerCase().trim() === user.nama.toLowerCase().trim())
+                      );
+                      const displayFoto = user.foto || matchingLinmas?.pasFoto;
                       return (
                         <tr key={user.id || user.nik || user.nip} className="hover:bg-slate-50 transition-colors">
                           <td className="py-3 px-3 border-r border-slate-200 text-center font-mono text-slate-500">
@@ -1848,8 +1861,8 @@ export default function ProfilPengguna({
                           <td className="py-3 px-4 border-r border-slate-200">
                             <div className="flex items-center gap-2.5">
                               <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-emerald-800 font-bold shrink-0 overflow-hidden text-xs shadow-2xs">
-                                {user.foto ? (
-                                  <img src={user.foto} alt={user.nama} className="w-full h-full object-cover" />
+                                {displayFoto ? (
+                                  <img src={displayFoto} alt={user.nama} className="w-full h-full object-cover" />
                                 ) : (
                                   user.nama?.charAt(0) || 'L'
                                 )}
@@ -2467,7 +2480,7 @@ export default function ProfilPengguna({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
             <div>
               <label className="block font-bold text-slate-700 mb-1">Status Akun</label>
               <select
@@ -2479,48 +2492,15 @@ export default function ProfilPengguna({
                 <option value="Nonaktif">Nonaktif</option>
               </select>
             </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Pas Foto Resmi Linmas</label>
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-10 rounded-lg overflow-hidden border border-slate-300 bg-white shadow-2xs shrink-0 flex items-center justify-center">
-                  {formLinmasFoto ? (
-                    <img src={formLinmasFoto} alt="Foto Linmas" className="w-full h-full object-cover" />
-                  ) : (
-                    <Users className="w-4 h-4 text-slate-300" />
-                  )}
-                </div>
-                <label className="flex-1 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors">
-                  <Camera className="w-3.5 h-3.5 text-amber-300" />
-                  <span>{formLinmasFoto ? 'Ganti Foto' : 'Unggah Foto'}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const base64 = await processImageUpload(file);
-                          setFormLinmasFoto(base64);
-                        } catch (err) {
-                          alert('Gagal memproses foto: ' + err.message);
-                        }
-                      }
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-                {formLinmasFoto && (
-                  <button
-                    type="button"
-                    onClick={() => setFormLinmasFoto('')}
-                    className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                    title="Hapus foto"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
+            <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-2.5 text-xs text-emerald-900">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <span className="font-bold text-emerald-950 block">Pas Foto Terhubung Otomatis</span>
+                <span className="text-[11px] text-emerald-800 leading-tight block">
+                  Pas foto anggota otomatis diambil dari database resmi Satlinmas.
+                </span>
               </div>
             </div>
           </div>
