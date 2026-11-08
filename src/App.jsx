@@ -21,6 +21,7 @@ import ProfilPengguna from './components/pengguna/ProfilPengguna';
 import LaporanRekapSatlinmas from './components/laporan/LaporanRekapSatlinmas';
 import LandingPage from './components/landing/LandingPage';
 import LoginPage from './components/auth/LoginPage';
+import { KECAMATAN_HST } from './data/mockData';
 import { 
   initStorage, 
   getPelanggarList, 
