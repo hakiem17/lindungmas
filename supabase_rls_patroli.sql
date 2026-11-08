@@ -43,16 +43,21 @@ TO anon, authenticated
 USING (true)
 WITH CHECK (true);
 
--- 4. Buka akses baca untuk tabel profil_pengguna
+-- 4. Buka akses penuh untuk tabel profil_pengguna
 ALTER TABLE profil_pengguna ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Akses Baca Profil Pengguna" ON profil_pengguna;
-CREATE POLICY "Akses Baca Profil Pengguna"
+DROP POLICY IF EXISTS "Akses Penuh Profil Pengguna" ON profil_pengguna;
+CREATE POLICY "Akses Penuh Profil Pengguna"
 ON profil_pengguna
 FOR ALL
 TO anon, authenticated
 USING (true)
 WITH CHECK (true);
+
+-- Izinkan id profil_pengguna memiliki default gen_random_uuid() dan tanpa foreign key wajib
+ALTER TABLE profil_pengguna ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE profil_pengguna DROP CONSTRAINT IF EXISTS profil_pengguna_id_fkey;
 
 -- 5. Buka akses baca untuk tabel master_pegawai
 ALTER TABLE master_pegawai ENABLE ROW LEVEL SECURITY;

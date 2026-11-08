@@ -1290,118 +1290,160 @@ export const getProfilPenggunaList = () => {
   return DEFAULT_PROFIL_PENGGUNA;
 };
 
-export const saveProfilPengguna = (userData) => {
-  let list = getProfilPenggunaList();
-
-  // Cari apakah user sudah ada (berdasarkan id, NIP, atau NIK)
-  const idx = list.findIndex(u => 
-    (userData.id && u.id === userData.id) || 
-    (userData.nip && u.nip === userData.nip) ||
-    (userData.nik && u.nik === userData.nik)
-  );
-
-  let targetUser;
-  if (idx >= 0) {
-    list[idx] = {
-      ...list[idx],
-      ...userData,
-      updatedAt: new Date().toISOString()
-    };
-    targetUser = list[idx];
-    addAuditLog({
-      aksi: 'UBAH',
-      modul: 'Profil Pengguna',
-      target: `${targetUser.nama} (${targetUser.peran})`,
-      detail: `Pembaruan akun & hak akses profil pengguna ${targetUser.nama} (${targetUser.peran}).`
-    });
-  } else {
-    // Buat akun baru
-    targetUser = {
-      id: userData.id || `usr-${Date.now().toString().slice(-6)}`,
-      nama: userData.nama || '',
-      nip: userData.nip || userData.nik || userData.username || `USR-${Date.now().toString().slice(-4)}`,
-      nik: userData.nik || userData.nip || null,
-      noRegistrasi: userData.noRegistrasi || null,
-      pangkat: userData.pangkat || (userData.peran === 'anggota_linmas' ? 'Satlinmas' : 'Pengatur (II/c)'),
-      jabatan: userData.jabatan || (userData.peran === 'anggota_linmas' ? 'Anggota Satlinmas' : 'Operator Sistem'),
-      regu: userData.regu || '-',
-      peran: userData.peran || 'anggota_linmas',
-      wilayahTugas: userData.wilayahTugas || 'Barabai',
-      desaTugas: userData.desaTugas || null,
-      noHp: userData.noHp || '',
-      email: userData.email || `${(userData.nik || userData.nip || 'user').replace(/\s+/g, '')}@linmas.hstkab.go.id`,
-      password: userData.password || 'LinmasHST2026!',
-      foto: userData.foto || null,
-      status: userData.status || 'Aktif',
-      keterangan: userData.keterangan || null,
-      createdAt: new Date().toISOString()
-    };
-    list = [targetUser, ...list];
-    addAuditLog({
-      aksi: 'TAMBAH',
-      modul: 'Profil Pengguna',
-      target: `${targetUser.nama} (${targetUser.peran})`,
-      detail: `Pembuatan akun pengguna baru ${targetUser.nama} peran ${targetUser.peran} wilayah ${targetUser.wilayahTugas}.`
-    });
-  }
-
-  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
-
-  // Sinkronkan ke Supabase Live Database jika terkonfigurasi (defensive)
+export const saveProfilPengguna = async (userData) => {
   if (isSupabaseConfigured()) {
-    try {
-      const payload = {
-        nama: targetUser.nama,
-        nip: targetUser.nip,
-        nik: targetUser.nik || null,
-        no_registrasi: targetUser.noRegistrasi || null,
-        pangkat: targetUser.pangkat,
-        jabatan: targetUser.jabatan,
-        regu: targetUser.regu || null,
-        peran: targetUser.peran || 'anggota_linmas',
-        wilayah_tugas: targetUser.wilayahTugas || 'Barabai',
-        desa_tugas: targetUser.desaTugas || null,
-        no_hp: targetUser.noHp || '',
-        email: targetUser.email,
-        foto_url: targetUser.foto || null,
-        status: targetUser.status || 'Aktif'
-      };
-      const isValidUuid = typeof targetUser.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUser.id);
-      if (isValidUuid) {
-        supabase.from('profil_pengguna').update(payload).eq('id', targetUser.id).then();
+    const cleanIdentifier = (userData.nip || userData.nik || userData.username || 'user').replace(/[^a-zA-Z0-9]/g, '');
+    const defaultEmail = userData.peran === 'anggota_linmas'
+      ? `${cleanIdentifier}@linmas.hstkab.go.id`
+      : `${cleanIdentifier}@satpolpp.hstkab.go.id`;
+    const email = userData.email || defaultEmail;
+    const password = userData.password || (userData.peran === 'anggota_linmas' ? 'LinmasHST2026!' : 'AdminHST2026!');
+
+    // 1. Cek apakah pengguna sudah ada di tabel profil_pengguna Supabase (berdasarkan id UUID atau NIP/NIK)
+    let existingUser = null;
+    if (userData.id && isUuid(userData.id)) {
+      const { data } = await supabase.from('profil_pengguna').select('*').eq('id', userData.id).maybeSingle();
+      existingUser = data;
+    }
+    if (!existingUser && userData.nip) {
+      const { data } = await supabase.from('profil_pengguna').select('*').eq('nip', userData.nip).maybeSingle();
+      existingUser = data;
+    }
+    if (!existingUser && userData.nik) {
+      const { data } = await supabase.from('profil_pengguna').select('*').eq('nik', userData.nik).maybeSingle();
+      existingUser = data;
+    }
+
+    const payload = {
+      nama: userData.nama || '',
+      nip: userData.nip || userData.nik || cleanIdentifier,
+      nik: userData.nik || null,
+      no_registrasi: userData.noRegistrasi || null,
+      pangkat: userData.pangkat || (userData.peran === 'anggota_linmas' ? 'Satlinmas' : 'Penata Muda (III/a)'),
+      jabatan: userData.jabatan || (userData.peran === 'admin_kabupaten' ? 'Admin Satpol PP' : (userData.peran === 'operator_kecamatan' ? 'Operator Wilayah' : 'Anggota Satlinmas')),
+      regu: userData.regu || null,
+      peran: userData.peran || 'admin_kabupaten',
+      wilayah_tugas: userData.peran === 'admin_kabupaten' ? 'Seluruh Kabupaten Hulu Sungai Tengah' : (userData.wilayahTugas || 'Barabai'),
+      desa_tugas: userData.peran === 'admin_kabupaten' ? null : (userData.desaTugas || null),
+      no_hp: userData.noHp || '',
+      email: email,
+      foto_url: userData.foto || null,
+      status: userData.status || 'Aktif',
+      updated_at: new Date().toISOString()
+    };
+
+    if (existingUser) {
+      // Update existing record di database
+      const { data: updated, error } = await supabase
+        .from('profil_pengguna')
+        .update(payload)
+        .eq('id', existingUser.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase update profil_pengguna error:', error);
+        throw new Error(error.message);
       }
-    } catch (err) {
-      console.warn('Supabase profil_pengguna sync notice:', err);
+
+      addAuditLog({
+        aksi: 'UBAH',
+        modul: 'Profil Pengguna',
+        target: `${payload.nama} (${payload.peran})`,
+        detail: `Pembaruan akun ${payload.nama} (${payload.peran}) langsung di database.`
+      });
+
+      return mapProfilFromDB(updated);
+    } else {
+      // Buat akun Auth baru via Supabase Auth agar terdaftar di auth.users
+      let authUserId = null;
+      try {
+        const { data: authData, error: authErr } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            data: {
+              nama: payload.nama,
+              nip: payload.nip,
+              peran: payload.peran
+            }
+          }
+        });
+        if (authData?.user?.id) {
+          authUserId = authData.user.id;
+        } else if (authErr) {
+          console.warn('Supabase auth.signUp notice:', authErr.message);
+        }
+      } catch (authErr) {
+        console.warn('Supabase auth.signUp exception:', authErr);
+      }
+
+      const insertPayload = {
+        ...payload,
+        ...(authUserId ? { id: authUserId } : (userData.id && isUuid(userData.id) ? { id: userData.id } : { id: crypto.randomUUID() }))
+      };
+
+      const { data: inserted, error: insErr } = await supabase
+        .from('profil_pengguna')
+        .insert([insertPayload])
+        .select()
+        .single();
+
+      if (insErr) {
+        console.error('Supabase insert profil_pengguna error:', insErr);
+        throw new Error(insErr.message);
+      }
+
+      addAuditLog({
+        aksi: 'TAMBAH',
+        modul: 'Profil Pengguna',
+        target: `${payload.nama} (${payload.peran})`,
+        detail: `Pembuatan akun baru ${payload.nama} (${payload.peran}) langsung tersimpan ke database.`
+      });
+
+      return mapProfilFromDB(inserted);
     }
   }
 
+  // Fallback jika Supabase belum terkonfigurasi
+  let list = getProfilPenggunaList();
+  const targetUser = {
+    id: userData.id || `usr-${Date.now().toString().slice(-6)}`,
+    ...userData,
+    createdAt: new Date().toISOString()
+  };
+  list = [targetUser, ...list];
+  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
   return targetUser;
 };
 
-export const deleteProfilPengguna = (id) => {
-  let list = getProfilPenggunaList();
-  const target = list.find(u => u.id === id || u.nik === id || u.nip === id);
-  list = list.filter(u => u.id !== id && u.nik !== id && u.nip !== id);
-  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
+export const deleteProfilPengguna = async (id, nip) => {
+  if (isSupabaseConfigured()) {
+    let res;
+    if (id && isUuid(id)) {
+      res = await supabase.from('profil_pengguna').delete().eq('id', id);
+    } else if (nip) {
+      res = await supabase.from('profil_pengguna').delete().eq('nip', nip);
+    } else if (id) {
+      res = await supabase.from('profil_pengguna').delete().eq('id', id);
+    }
 
-  if (target) {
+    if (res?.error) {
+      console.error('Supabase delete profil_pengguna error:', res.error);
+      throw new Error(res.error.message);
+    }
+
     addAuditLog({
       aksi: 'HAPUS',
       modul: 'Profil Pengguna',
-      target: `${target.nama} (${target.peran})`,
-      detail: `Penghapusan akun profil pengguna ${target.nama}.`
+      target: `Akun Pengguna (${nip || id})`,
+      detail: `Penghapusan akun profil pengguna langsung dari database.`
     });
-
-    if (isSupabaseConfigured()) {
-      try {
-        const isValidUuid = typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-        if (isValidUuid) {
-          supabase.from('profil_pengguna').delete().eq('id', id).then();
-        }
-      } catch (e) {}
-    }
+    return true;
   }
 
+  let list = getProfilPenggunaList().filter(u => u.id !== id && u.nik !== id && u.nip !== id);
+  safeSetItem(STORAGE_KEYS.PROFIL_PENGGUNA, JSON.stringify(list));
   return list;
 };
 

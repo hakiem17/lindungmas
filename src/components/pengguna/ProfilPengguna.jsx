@@ -211,7 +211,7 @@ export default function ProfilPengguna({
     setIsUserModalOpen(true);
   };
 
-  const handleSaveUser = (e) => {
+  const handleSaveUser = async (e) => {
     e.preventDefault();
     if (!formNama.trim() || !formNip.trim()) {
       showError('Nama lengkap dan NIP/Username akun wajib diisi!');
@@ -234,22 +234,22 @@ export default function ProfilPengguna({
         foto: formFoto.trim() || null
       };
 
-      saveProfilPengguna(payload);
-      if (onRefreshData) onRefreshData();
+      await saveProfilPengguna(payload);
+      if (onRefreshData) await onRefreshData();
 
       setIsUserModalOpen(false);
-      showSuccess(editingUser ? `Akun pengguna ${payload.nama} berhasil diperbarui!` : `Akun pengguna baru ${payload.nama} berhasil ditambahkan!`);
+      showSuccess(editingUser ? `Akun pengguna ${payload.nama} berhasil diperbarui di database!` : `Akun pengguna baru ${payload.nama} berhasil tersimpan ke database!`);
     } catch (err) {
-      showError(`Gagal menyimpan akun: ${err.message}`);
+      showError(`Gagal menyimpan akun ke database: ${err.message}`);
     }
   };
 
-  const handleDeleteUser = (id) => {
+  const handleDeleteUser = async (id) => {
     try {
-      deleteProfilPengguna(id);
-      if (onRefreshData) onRefreshData();
+      await deleteProfilPengguna(id);
+      if (onRefreshData) await onRefreshData();
       setDeleteConfirmId(null);
-      showSuccess('Akun pengguna berhasil dihapus dari sistem!');
+      showSuccess('Akun pengguna berhasil dihapus dari database!');
     } catch (err) {
       showError(`Gagal menghapus akun: ${err.message}`);
     }
@@ -323,7 +323,7 @@ export default function ProfilPengguna({
     setIsKecamatanModalOpen(true);
   };
 
-  const handleSaveKecamatanUser = (e) => {
+  const handleSaveKecamatanUser = async (e) => {
     e.preventDefault();
     if (!formKecNama.trim() || !formKecNip.trim() || !formKecWilayah) {
       showError('Nama lengkap, NIP/Username login, dan Wilayah Kecamatan wajib diisi!');
@@ -346,14 +346,14 @@ export default function ProfilPengguna({
         status: formKecStatus
       };
 
-      saveProfilPengguna(payload);
-      if (onRefreshData) onRefreshData();
+      await saveProfilPengguna(payload);
+      if (onRefreshData) await onRefreshData();
 
       setIsKecamatanModalOpen(false);
       showSuccess(
         editingKecamatanUser 
-          ? `Akun Operator Kecamatan ${payload.wilayahTugas} (${payload.nama}) berhasil diperbarui!` 
-          : `Akun Operator Kecamatan ${payload.wilayahTugas} (${payload.nama}) berhasil dibuat!`
+          ? `Akun Operator Kecamatan ${payload.wilayahTugas} (${payload.nama}) berhasil diperbarui di database!` 
+          : `Akun Operator Kecamatan ${payload.wilayahTugas} (${payload.nama}) berhasil tersimpan ke database!`
       );
     } catch (err) {
       showError(`Gagal menyimpan akun operator kecamatan: ${err.message}`);
@@ -455,7 +455,7 @@ export default function ProfilPengguna({
     }
   };
 
-  const handleSaveLinmasUser = (e) => {
+  const handleSaveLinmasUser = async (e) => {
     e.preventDefault();
     if (!formLinmasNama.trim() || !formLinmasNik.trim()) {
       showError('Nama lengkap dan NIK personil Linmas wajib diisi!');
@@ -489,14 +489,14 @@ export default function ProfilPengguna({
         status: formLinmasStatus
       };
 
-      saveProfilPengguna(payload);
-      if (onRefreshData) onRefreshData();
+      await saveProfilPengguna(payload);
+      if (onRefreshData) await onRefreshData();
 
       setIsLinmasModalOpen(false);
       showSuccess(
         editingLinmasUser
-          ? `Akun login Linmas ${payload.nama} berhasil diperbarui!`
-          : `Akun login Linmas ${payload.nama} berhasil dibuat! Username login: ${payload.nik}`
+          ? `Akun login Linmas ${payload.nama} berhasil diperbarui di database!`
+          : `Akun login Linmas ${payload.nama} berhasil tersimpan ke database! Username: ${payload.nik}`
       );
     } catch (err) {
       showError(`Gagal menyimpan akun Linmas: ${err.message}`);
