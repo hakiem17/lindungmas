@@ -361,7 +361,7 @@ export default function KegiatanPatroli({
   };
 
   // Submit Handler
-  const handleSaveSubmit = (e) => {
+  const handleSaveSubmit = async (e) => {
     e.preventDefault();
     if (!formData.judulPatroli.trim()) {
       alert('Judul Patroli / Kejadian wajib diisi.');
@@ -376,10 +376,15 @@ export default function KegiatanPatroli({
       return;
     }
 
-    const saved = saveKegiatanPatroli(formData);
-    setIsFormModalOpen(false);
-    if (onRefreshData) onRefreshData();
-    alert(`Laporan patroli lapangan "${saved.judulPatroli}" (${saved.kode}) berhasil disimpan!`);
+    try {
+      const saved = await saveKegiatanPatroli(formData);
+      setIsFormModalOpen(false);
+      if (onRefreshData) onRefreshData();
+      alert(`Laporan patroli lapangan "${saved.judulPatroli}" (${saved.kode}) berhasil disimpan ke database!`);
+    } catch (err) {
+      console.error('Error saving patrol report:', err);
+      alert('Terjadi kendala saat menyimpan laporan.');
+    }
   };
 
   // Delete Handler

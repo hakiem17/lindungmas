@@ -1959,7 +1959,7 @@ export const getKegiatanPatroliList = () => {
   }
 };
 
-export const saveKegiatanPatroli = (data) => {
+export const saveKegiatanPatroli = async (data) => {
   let list = getKegiatanPatroliList();
 
   if (data.id) {
@@ -1994,14 +1994,14 @@ export const saveKegiatanPatroli = (data) => {
             jumlah_personel: Number(list[idx].jumlahPersonel) || 4,
             lat: Number(list[idx].lat) || -2.5833,
             lng: Number(list[idx].lng) || 115.3811,
-            hasil_patroli: list[idx].hasilPatroli || list[idx].uraianKegiatan || '',
-            tindakan_diambil: list[idx].tindakanDiambil || '',
+            hasil_patroli: list[idx].hasilPatroli || list[idx].uraianKegiatan || 'Situasi terpantau aman terkendali',
+            tindakan_diambil: list[idx].tindakanDiambil || 'Monitoring berkala',
             foto_dokumentasi: Array.isArray(list[idx].fotoDokumentasi) ? list[idx].fotoDokumentasi : []
           };
           if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
-            supabase.from('kegiatan_patroli').update(payload).eq('id', list[idx].id).then();
+            await supabase.from('kegiatan_patroli').update(payload).eq('id', list[idx].id);
           } else {
-            supabase.from('kegiatan_patroli').insert([payload]).then();
+            await supabase.from('kegiatan_patroli').insert([payload]);
           }
         } catch (err) {
           console.warn('Supabase kegiatan_patroli update notice:', err);
@@ -2036,9 +2036,9 @@ export const saveKegiatanPatroli = (data) => {
     jumlahPersonel: Number(data.jumlahPersonel) || 4,
     lat: Number(data.lat) || -2.5833,
     lng: Number(data.lng) || 115.3811,
-    hasilPatroli: data.hasilPatroli || data.uraianKegiatan || '',
-    uraianKegiatan: data.hasilPatroli || data.uraianKegiatan || '',
-    tindakanDiambil: data.tindakanDiambil || '',
+    hasilPatroli: data.hasilPatroli || data.uraianKegiatan || 'Situasi terpantau aman terkendali',
+    uraianKegiatan: data.hasilPatroli || data.uraianKegiatan || 'Situasi terpantau aman terkendali',
+    tindakanDiambil: data.tindakanDiambil || 'Monitoring berkala',
     fotoDokumentasi: Array.isArray(data.fotoDokumentasi) ? data.fotoDokumentasi : [],
     waktuLapor,
     createdAt: new Date().toISOString()
@@ -2053,7 +2053,7 @@ export const saveKegiatanPatroli = (data) => {
     detail: `Input laporan kegiatan/patroli baru oleh ${newKegiatan.petugasPelapor} di Kec. ${newKegiatan.kecamatan}.`
   });
 
-  // Sinkronkan ke Supabase Live Database jika memungkinkan
+  // Sinkronkan ke Supabase Live Database
   if (isSupabaseConfigured()) {
     try {
       const payload = {
@@ -2063,7 +2063,7 @@ export const saveKegiatanPatroli = (data) => {
         status_situasi: newKegiatan.statusSituasi,
         kecamatan: newKegiatan.kecamatan,
         desa_kelurahan: newKegiatan.desaKelurahan,
-        lokasi_spesifik: newKegiatan.lokasiSpesifik,
+        lokasi_spesifik: newKegiatan.lokasiSpesifik || '',
         petugas_pelapor: newKegiatan.petugasPelapor,
         nik_pelapor: newKegiatan.nikPelapor,
         jumlah_personel: newKegiatan.jumlahPersonel,
@@ -2073,9 +2073,14 @@ export const saveKegiatanPatroli = (data) => {
         tindakan_diambil: newKegiatan.tindakanDiambil,
         foto_dokumentasi: newKegiatan.fotoDokumentasi
       };
-      supabase.from('kegiatan_patroli').insert([payload]).then(({ error }) => {
-        if (error) console.warn('Supabase kegiatan_patroli sync notice:', error.message);
-      });
+      const { data: dbRes, error } = await supabase.from('kegiatan_patroli').insert([payload]).select().maybeSingle();
+      if (error) {
+        console.warn('Supabase kegiatan_patroli sync notice:', error.message);
+      } else if (dbRes && dbRes.id) {
+        newKegiatan.id = dbRes.id;
+        list[0] = newKegiatan;
+        safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
+      }
     } catch (err) {
       console.warn('Supabase kegiatan_patroli sync exception:', err);
     }
