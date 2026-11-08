@@ -379,19 +379,24 @@ export default function KegiatanPatroli({
     try {
       const saved = await saveKegiatanPatroli(formData);
       setIsFormModalOpen(false);
-      if (onRefreshData) onRefreshData();
-      alert(`Laporan patroli lapangan "${saved.judulPatroli}" (${saved.kode}) berhasil disimpan ke database!`);
+      if (onRefreshData) await onRefreshData();
+      alert(`Laporan patroli "${saved.judulPatroli}" (${saved.kode}) berhasil tersimpan langsung ke database Supabase!`);
     } catch (err) {
-      console.error('Error saving patrol report:', err);
-      alert('Terjadi kendala saat menyimpan laporan.');
+      console.error('Error saving patrol report directly to database:', err);
+      alert(`Gagal menyimpan laporan ke database: ${err.message || 'Kendala koneksi'}`);
     }
   };
 
   // Delete Handler
-  const handleDelete = (id) => {
-    deleteKegiatanPatroli(id);
-    setDeleteConfirmId(null);
-    if (onRefreshData) onRefreshData();
+  const handleDelete = async (id, kode) => {
+    try {
+      await deleteKegiatanPatroli(id, kode);
+      setDeleteConfirmId(null);
+      if (onRefreshData) await onRefreshData();
+    } catch (err) {
+      console.error('Error deleting patrol report:', err);
+      alert('Gagal menghapus laporan dari database.');
+    }
   };
 
   // Export CSV
