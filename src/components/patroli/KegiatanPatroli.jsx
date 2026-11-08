@@ -72,7 +72,7 @@ export default function KegiatanPatroli({
     statusSituasi: 'Aman & Kondusif',
     kecamatan: assignedKecamatan || (isLinmas ? (currentUser?.wilayahTugas || 'Barabai') : 'Barabai'),
     desaKelurahan: isLinmas ? (currentUser?.desaTugas || 'Barabai Timur') : 'Barabai Timur',
-    lokasiSpesifik: 'Depan Pos Ronda RT 04 Lapangan Dwi Warna',
+    lokasiSpesifik: '',
     petugasPelapor: isLinmas 
       ? (currentUser?.nama ? `${currentUser.nama} (Satlinmas)` : 'Muhammad Arsyad (Satlinmas)') 
       : (currentUser?.nama || 'Petugas Satpol PP'),
@@ -95,8 +95,12 @@ export default function KegiatanPatroli({
   const availableDesa = React.useMemo(() => {
     const curKec = String(formData.kecamatan || '').trim().toLowerCase();
     const foundKec = (wilayahList || []).find(k => String(k?.nama || k?.kecamatan || '').trim().toLowerCase() === curKec);
-    return foundKec?.desa || [];
-  }, [formData.kecamatan, wilayahList]);
+    const list = foundKec?.desa || [];
+    if (isLinmas && currentUser?.desaTugas && !list.includes(currentUser.desaTugas)) {
+      return [currentUser.desaTugas, ...list];
+    }
+    return list;
+  }, [formData.kecamatan, wilayahList, isLinmas, currentUser?.desaTugas]);
 
   // Anggota Linmas Terdaftar HANYA di Desa terpilih dari Database (tanpa desa lain)
   const availableLinmas = React.useMemo(() => {
@@ -286,14 +290,14 @@ export default function KegiatanPatroli({
       statusSituasi: 'Aman & Kondusif',
       kecamatan: curKec,
       desaKelurahan: curDesa,
-      lokasiSpesifik: `Pos Ronda RT ${isLinmas ? '04' : '01'} Desa ${curDesa}`,
+      lokasiSpesifik: '',
       petugasPelapor: defaultPetugas,
       nikPelapor: defaultNik,
       jumlahPersonel: isLinmas ? 1 : 4,
       lat: -2.5855,
       lng: 115.3815,
       hasilPatroli: '',
-      tindakanDiambil: isLinmas ? 'Monitoring keamanan lingkungan RT/RW dan patroli keliling.' : '',
+      tindakanDiambil: '',
       fotoDokumentasi: []
     });
     setIsManualPelapor(false);
@@ -1120,11 +1124,19 @@ export default function KegiatanPatroli({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Desa / Kelurahan
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-800">
+                        Desa / Kelurahan
+                      </label>
+                      {isLinmas && (
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Terkunci Sesuai Akun
+                        </span>
+                      )}
+                    </div>
                     <select
                       value={formData.desaKelurahan}
+                      disabled={Boolean(isLinmas)}
                       onChange={(e) => {
                         const newDesa = e.target.value;
                         const matchingLinmas = (Array.isArray(satlinmasList) ? satlinmasList : []).find(s => 
@@ -1142,7 +1154,11 @@ export default function KegiatanPatroli({
                           })
                         });
                       }}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
+                      className={`w-full px-3 py-2 border rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden ${
+                        isLinmas
+                          ? 'bg-slate-100 border-slate-300 cursor-not-allowed text-slate-600 font-semibold'
+                          : 'bg-white border-slate-300 focus:ring-2 focus:ring-teal-500/20'
+                      }`}
                     >
                       {availableDesa.map(d => (
                         <option key={d} value={d}>Desa {d}</option>
