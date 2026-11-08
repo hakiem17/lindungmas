@@ -174,10 +174,18 @@ export default function App() {
         setIsDbLive(true);
         if (liveData.satlinmas) setSatlinmasList(liveData.satlinmas);
         if (liveData.poskamling) setPoskamlingList(liveData.poskamling);
+        // Gabungkan liveData.kegiatanPatroli dengan data lokal agar input patroli terbaru Linmas tidak hilang
+        const currentLocalPatroli = getKegiatanPatroliList();
         if (liveData.kegiatanPatroli && liveData.kegiatanPatroli.length > 0) {
-          setKegiatanPatroliList(liveData.kegiatanPatroli);
+          const mergedPatrol = [...liveData.kegiatanPatroli];
+          currentLocalPatroli.forEach(lp => {
+            if (!mergedPatrol.some(m => (m.id && m.id === lp.id) || (m.kode && m.kode === lp.kode))) {
+              mergedPatrol.unshift(lp);
+            }
+          });
+          setKegiatanPatroliList(mergedPatrol);
         } else {
-          setKegiatanPatroliList(getKegiatanPatroliList());
+          setKegiatanPatroliList(currentLocalPatroli);
         }
         if (liveData.pegawai) setPegawaiList(liveData.pegawai);
         if (liveData.profilPengguna && liveData.profilPengguna.length > 0) {
@@ -238,7 +246,7 @@ export default function App() {
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    refreshAllData(true);
+    refreshAllData(false);
     if (user?.peran) {
       setActiveRole(user.peran);
       if (user.peran === 'anggota_linmas' || user.peran === 'linmas') {

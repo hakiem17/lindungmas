@@ -74,8 +74,15 @@ export default function DashboardEksekutif({
   }, [poskamlingList, assignedKecamatan]);
 
   const effectivePatroli = useMemo(() => {
-    if (!assignedKecamatan) return kegiatanPatroliList;
-    return kegiatanPatroliList.filter(p => (p.kecamatan || '').toLowerCase() === assignedKecamatan.toLowerCase());
+    const list = !assignedKecamatan 
+      ? kegiatanPatroliList 
+      : kegiatanPatroliList.filter(p => (p.kecamatan || '').toLowerCase() === assignedKecamatan.toLowerCase());
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+      const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+      if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+      return String(b.id || '').localeCompare(String(a.id || ''));
+    });
   }, [kegiatanPatroliList, assignedKecamatan]);
 
   // Total counts

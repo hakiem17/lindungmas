@@ -43,7 +43,24 @@ const safeSetItem = (key, val) => {
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem(key, val);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('⚠️ LocalStorage setItem error for key', key, e);
+      try {
+        // Jika kuota penuh dan ini data patroli, potong riwayat lama / kurangi ukuran foto agar data tetap tersimpan
+        if (key === STORAGE_KEYS.KEGIATAN_PATROLI) {
+          const parsed = JSON.parse(val);
+          const reduced = parsed.slice(0, 30).map((item, idx) => {
+            if (idx > 5 && item.fotoDokumentasi && item.fotoDokumentasi.length > 0) {
+              return { ...item, fotoDokumentasi: item.fotoDokumentasi.slice(0, 1) };
+            }
+            return item;
+          });
+          localStorage.setItem(key, JSON.stringify(reduced));
+        }
+      } catch (innerErr) {
+        console.error('Failed fallback storage:', innerErr);
+      }
+    }
   }
 };
 
@@ -375,19 +392,9 @@ export const fetchDatabaseData = async () => {
 };
 
 /**
- * Paksa pembersihan cache lokal dan ambil data riil langsung dari database Supabase
+ * Sinkronisasi data riil langsung dari database Supabase tanpa menghapus rekaman lokal baru
  */
 export const forceDatabaseSync = async () => {
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.removeItem(STORAGE_KEYS.PEGAWAI);
-      localStorage.removeItem(STORAGE_KEYS.PROFIL_PENGGUNA);
-      localStorage.removeItem(STORAGE_KEYS.SATLINMAS);
-      localStorage.removeItem(STORAGE_KEYS.POSKAMLING);
-      localStorage.removeItem(STORAGE_KEYS.KEGIATAN_PATROLI);
-      localStorage.removeItem(STORAGE_KEYS.FASILITAS_POSKAMLING);
-    } catch (e) {}
-  }
   return await fetchDatabaseData();
 };
 

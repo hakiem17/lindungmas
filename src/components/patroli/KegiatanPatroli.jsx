@@ -49,6 +49,8 @@ export default function KegiatanPatroli({
   React.useEffect(() => {
     if (assignedKecamatan) {
       setSelectedKecamatan(assignedKecamatan);
+    } else {
+      setSelectedKecamatan('semua');
     }
   }, [assignedKecamatan]);
 
@@ -121,7 +123,7 @@ export default function KegiatanPatroli({
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 1000;
+          const maxDim = 720;
           if (width > maxDim || height > maxDim) {
             if (width > height) {
               height = Math.round((height * maxDim) / width);
@@ -135,7 +137,7 @@ export default function KegiatanPatroli({
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.82));
+          resolve(canvas.toDataURL('image/jpeg', 0.65));
         };
         img.onerror = () => resolve(e.target.result);
         img.src = e.target.result;
@@ -218,26 +220,33 @@ export default function KegiatanPatroli({
     return (kegiatanList || []);
   }, [kegiatanList, isLinmas, assignedKecamatan, linmasName, linmasNik, linmasDesa, linmasKec]);
 
-  // Filtering Logic
-  const filteredList = scopedKegiatan.filter(item => {
-    const term = searchTerm.toLowerCase();
-    const matchSearch =
-      (item.judulPatroli || '').toLowerCase().includes(term) ||
-      (item.petugasPelapor || '').toLowerCase().includes(term) ||
-      (item.desaKelurahan || '').toLowerCase().includes(term) ||
-      (item.lokasiSpesifik || '').toLowerCase().includes(term) ||
-      (item.hasilPatroli || '').toLowerCase().includes(term) ||
-      (item.kode || '').toLowerCase().includes(term);
+  // Filtering & Sorting Logic (Laporan terbaru selalu di paling atas)
+  const filteredList = React.useMemo(() => {
+    return scopedKegiatan.filter(item => {
+      const term = searchTerm.toLowerCase();
+      const matchSearch =
+        (item.judulPatroli || '').toLowerCase().includes(term) ||
+        (item.petugasPelapor || '').toLowerCase().includes(term) ||
+        (item.desaKelurahan || '').toLowerCase().includes(term) ||
+        (item.lokasiSpesifik || '').toLowerCase().includes(term) ||
+        (item.hasilPatroli || '').toLowerCase().includes(term) ||
+        (item.kode || '').toLowerCase().includes(term);
 
-    const matchKecamatan = assignedKecamatan
-      ? (item.kecamatan || '').toLowerCase() === assignedKecamatan.toLowerCase()
-      : (selectedKecamatan === 'semua' || item.kecamatan === selectedKecamatan);
+      const matchKecamatan = assignedKecamatan
+        ? (item.kecamatan || '').toLowerCase() === assignedKecamatan.toLowerCase()
+        : (selectedKecamatan === 'semua' || (item.kecamatan || '').toLowerCase() === selectedKecamatan.toLowerCase());
 
-    const matchSituasi = selectedSituasi === 'semua' || item.statusSituasi === selectedSituasi;
-    const matchJenis = selectedJenis === 'semua' || item.jenisKegiatan === selectedJenis;
+      const matchSituasi = selectedSituasi === 'semua' || (item.statusSituasi || '').toLowerCase() === selectedSituasi.toLowerCase();
+      const matchJenis = selectedJenis === 'semua' || (item.jenisKegiatan || '').toLowerCase() === selectedJenis.toLowerCase();
 
-    return matchSearch && matchKecamatan && matchSituasi && matchJenis;
-  });
+      return matchSearch && matchKecamatan && matchSituasi && matchJenis;
+    }).sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+      const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+      if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+      return String(b.id || '').localeCompare(String(a.id || ''));
+    });
+  }, [scopedKegiatan, searchTerm, selectedKecamatan, selectedSituasi, selectedJenis, assignedKecamatan]);
 
   // KPI Calculations based on scoped data
   const totalLaporan = scopedKegiatan.length;
