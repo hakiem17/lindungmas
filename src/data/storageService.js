@@ -306,7 +306,22 @@ export const fetchDatabaseData = async () => {
     // Overwrite local cache with live database records
     if (!resSatlinmas.error && resSatlinmas.data) safeSetItem(STORAGE_KEYS.SATLINMAS, JSON.stringify(mappedSatlinmas));
     if (!resPoskamling.error && resPoskamling.data) safeSetItem(STORAGE_KEYS.POSKAMLING, JSON.stringify(mappedPoskamling));
-    if (!resPatroli.error && resPatroli.data) safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(mappedPatroli));
+    
+    // Update KEGIATAN_PATROLI cache dengan aman (gabungkan record lokal dengan database Supabase)
+    let finalPatroli = getKegiatanPatroliList();
+    if (mappedPatroli && mappedPatroli.length > 0) {
+      const merged = [...mappedPatroli];
+      finalPatroli.forEach(localItem => {
+        if (!merged.some(m => (m.id && m.id === localItem.id) || (m.kode && m.kode === localItem.kode))) {
+          merged.unshift(localItem);
+        }
+      });
+      finalPatroli = merged;
+      safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(finalPatroli));
+    } else if (finalPatroli.length > 0) {
+      safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(finalPatroli));
+    }
+
     if (!resPegawai.error && resPegawai.data) {
       safeSetItem(STORAGE_KEYS.PEGAWAI, JSON.stringify(mappedPegawai));
     }
@@ -345,7 +360,7 @@ export const fetchDatabaseData = async () => {
     return {
       satlinmas: mappedSatlinmas,
       poskamling: mappedPoskamling,
-      kegiatanPatroli: mappedPatroli,
+      kegiatanPatroli: finalPatroli,
       pegawai: mappedPegawai,
       profilPengguna: finalProfil,
       fasilitasPoskamling: mappedFasilitas,
@@ -1938,7 +1953,7 @@ export const getKegiatanPatroliList = () => {
 };
 
 export const saveKegiatanPatroli = (data) => {
-  const list = getKegiatanPatroliList();
+  let list = getKegiatanPatroliList();
 
   if (data.id) {
     const idx = list.findIndex(k => k.id === data.id);
@@ -1948,7 +1963,7 @@ export const saveKegiatanPatroli = (data) => {
         ...data,
         updatedAt: new Date().toISOString()
       };
-      localStorage.setItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
+      safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
       addAuditLog({
         aksi: 'UBAH',
         modul: 'Kegiatan dan Patroli',
@@ -1958,27 +1973,31 @@ export const saveKegiatanPatroli = (data) => {
 
       // Sinkronkan ke Supabase Live Database
       if (isSupabaseConfigured()) {
-        const payload = {
-          kode: list[idx].kode,
-          judul_patroli: list[idx].judulPatroli || list[idx].judulKegiatan,
-          jenis_kegiatan: list[idx].jenisKegiatan,
-          status_situasi: list[idx].statusSituasi,
-          kecamatan: list[idx].kecamatan,
-          desa_kelurahan: list[idx].desaKelurahan || list[idx].desa,
-          lokasi_spesifik: list[idx].lokasiSpesifik || '',
-          petugas_pelapor: list[idx].petugasPelapor || list[idx].namaPelapor || '',
-          nik_pelapor: list[idx].nikPelapor || null,
-          jumlah_personel: Number(list[idx].jumlahPersonel) || 4,
-          lat: Number(list[idx].lat) || -2.5833,
-          lng: Number(list[idx].lng) || 115.3811,
-          hasil_patroli: list[idx].hasilPatroli || list[idx].uraianKegiatan || '',
-          tindakan_diambil: list[idx].tindakanDiambil || '',
-          foto_dokumentasi: Array.isArray(list[idx].fotoDokumentasi) ? list[idx].fotoDokumentasi : []
-        };
-        if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
-          supabase.from('kegiatan_patroli').update(payload).eq('id', list[idx].id).then();
-        } else {
-          supabase.from('kegiatan_patroli').insert([payload]).then();
+        try {
+          const payload = {
+            kode: list[idx].kode,
+            judul_patroli: list[idx].judulPatroli || list[idx].judulKegiatan,
+            jenis_kegiatan: list[idx].jenisKegiatan,
+            status_situasi: list[idx].statusSituasi,
+            kecamatan: list[idx].kecamatan,
+            desa_kelurahan: list[idx].desaKelurahan || list[idx].desa,
+            lokasi_spesifik: list[idx].lokasiSpesifik || '',
+            petugas_pelapor: list[idx].petugasPelapor || list[idx].namaPelapor || '',
+            nik_pelapor: list[idx].nikPelapor || null,
+            jumlah_personel: Number(list[idx].jumlahPersonel) || 4,
+            lat: Number(list[idx].lat) || -2.5833,
+            lng: Number(list[idx].lng) || 115.3811,
+            hasil_patroli: list[idx].hasilPatroli || list[idx].uraianKegiatan || '',
+            tindakan_diambil: list[idx].tindakanDiambil || '',
+            foto_dokumentasi: Array.isArray(list[idx].fotoDokumentasi) ? list[idx].fotoDokumentasi : []
+          };
+          if (list[idx].id && list[idx].id.includes('-') && list[idx].id.length > 20) {
+            supabase.from('kegiatan_patroli').update(payload).eq('id', list[idx].id).then();
+          } else {
+            supabase.from('kegiatan_patroli').insert([payload]).then();
+          }
+        } catch (err) {
+          console.warn('Supabase kegiatan_patroli update notice:', err);
         }
       }
 
@@ -2018,8 +2037,8 @@ export const saveKegiatanPatroli = (data) => {
     createdAt: new Date().toISOString()
   };
 
-  list.unshift(newKegiatan);
-  localStorage.setItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
+  list = [newKegiatan, ...list];
+  safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
   addAuditLog({
     aksi: 'INPUT',
     modul: 'Kegiatan dan Patroli',
@@ -2027,26 +2046,32 @@ export const saveKegiatanPatroli = (data) => {
     detail: `Input laporan kegiatan/patroli baru oleh ${newKegiatan.petugasPelapor} di Kec. ${newKegiatan.kecamatan}.`
   });
 
-  // Sinkronkan ke Supabase Live Database
+  // Sinkronkan ke Supabase Live Database jika memungkinkan
   if (isSupabaseConfigured()) {
-    const payload = {
-      kode: newKegiatan.kode,
-      judul_patroli: newKegiatan.judulPatroli,
-      jenis_kegiatan: newKegiatan.jenisKegiatan,
-      status_situasi: newKegiatan.statusSituasi,
-      kecamatan: newKegiatan.kecamatan,
-      desa_kelurahan: newKegiatan.desaKelurahan,
-      lokasi_spesifik: newKegiatan.lokasiSpesifik,
-      petugas_pelapor: newKegiatan.petugasPelapor,
-      nik_pelapor: newKegiatan.nikPelapor,
-      jumlah_personel: newKegiatan.jumlahPersonel,
-      lat: newKegiatan.lat,
-      lng: newKegiatan.lng,
-      hasil_patroli: newKegiatan.hasilPatroli,
-      tindakan_diambil: newKegiatan.tindakanDiambil,
-      foto_dokumentasi: newKegiatan.fotoDokumentasi
-    };
-    supabase.from('kegiatan_patroli').insert([payload]).then();
+    try {
+      const payload = {
+        kode: newKegiatan.kode,
+        judul_patroli: newKegiatan.judulPatroli,
+        jenis_kegiatan: newKegiatan.jenisKegiatan,
+        status_situasi: newKegiatan.statusSituasi,
+        kecamatan: newKegiatan.kecamatan,
+        desa_kelurahan: newKegiatan.desaKelurahan,
+        lokasi_spesifik: newKegiatan.lokasiSpesifik,
+        petugas_pelapor: newKegiatan.petugasPelapor,
+        nik_pelapor: newKegiatan.nikPelapor,
+        jumlah_personel: newKegiatan.jumlahPersonel,
+        lat: newKegiatan.lat,
+        lng: newKegiatan.lng,
+        hasil_patroli: newKegiatan.hasilPatroli,
+        tindakan_diambil: newKegiatan.tindakanDiambil,
+        foto_dokumentasi: newKegiatan.fotoDokumentasi
+      };
+      supabase.from('kegiatan_patroli').insert([payload]).then(({ error }) => {
+        if (error) console.warn('Supabase kegiatan_patroli sync notice:', error.message);
+      });
+    } catch (err) {
+      console.warn('Supabase kegiatan_patroli sync exception:', err);
+    }
   }
 
   return newKegiatan;
@@ -2056,7 +2081,7 @@ export const deleteKegiatanPatroli = (id) => {
   let list = getKegiatanPatroliList();
   const target = list.find(k => k.id === id);
   list = list.filter(k => k.id !== id);
-  localStorage.setItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
+  safeSetItem(STORAGE_KEYS.KEGIATAN_PATROLI, JSON.stringify(list));
   if (target) {
     addAuditLog({
       aksi: 'HAPUS',

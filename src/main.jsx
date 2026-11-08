@@ -110,7 +110,7 @@ class RootErrorBoundary extends React.Component {
                 onClick={() => {
                   try {
                     localStorage.removeItem('lindungmas_auth_session');
-                  } catch (e) {}
+                  } catch (e) { }
                   window.location.href = '/';
                 }}
                 style={{

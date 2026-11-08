@@ -174,7 +174,11 @@ export default function App() {
         setIsDbLive(true);
         if (liveData.satlinmas) setSatlinmasList(liveData.satlinmas);
         if (liveData.poskamling) setPoskamlingList(liveData.poskamling);
-        if (liveData.kegiatanPatroli) setKegiatanPatroliList(liveData.kegiatanPatroli);
+        if (liveData.kegiatanPatroli && liveData.kegiatanPatroli.length > 0) {
+          setKegiatanPatroliList(liveData.kegiatanPatroli);
+        } else {
+          setKegiatanPatroliList(getKegiatanPatroliList());
+        }
         if (liveData.pegawai) setPegawaiList(liveData.pegawai);
         if (liveData.profilPengguna && liveData.profilPengguna.length > 0) {
           setProfilPenggunaList(liveData.profilPengguna);

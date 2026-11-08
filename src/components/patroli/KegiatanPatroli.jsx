@@ -184,21 +184,39 @@ export default function KegiatanPatroli({
     }));
   };
 
-  // Scoped Data by Role (Anggota Linmas melihat riwayat sendiri, Operator melihat wilayahnya, Admin melihat seluruh HST)
-  const linmasName = currentUser?.nama || 'Muhammad Arsyad';
+  // Scoped Data by Role (Anggota Linmas melihat riwayat sendiri & wilayah desanya, Operator melihat wilayahnya, Admin melihat seluruh HST)
+  const linmasName = (currentUser?.nama || '').toLowerCase().trim();
+  const linmasNik = String(currentUser?.nik || currentUser?.nip || '').trim();
+  const linmasDesa = (currentUser?.desaTugas || '').toLowerCase().trim();
+  const linmasKec = (currentUser?.wilayahTugas || '').toLowerCase().trim();
+
   const scopedKegiatan = React.useMemo(() => {
     if (isLinmas) {
-      const own = kegiatanList.filter(k => 
-        (k.petugasPelapor || '').toLowerCase().includes(linmasName.toLowerCase()) ||
-        (k.desaKelurahan || '').toLowerCase() === (currentUser?.desaTugas || 'Barabai Timur').toLowerCase()
-      );
-      return own.length > 0 ? own : kegiatanList.slice(0, 5);
+      const own = (kegiatanList || []).filter(k => {
+        if (!k) return false;
+        const reporterName = String(k.petugasPelapor || k.namaPelapor || '').toLowerCase().trim();
+        const reporterNik = String(k.nikPelapor || '').trim();
+        const kDesa = String(k.desaKelurahan || k.desa || '').toLowerCase().trim();
+        const kKec = String(k.kecamatan || '').toLowerCase().trim();
+
+        const matchReporter = Boolean(
+          (linmasName && reporterName.includes(linmasName)) || 
+          (linmasNik && reporterNik === linmasNik) ||
+          (linmasName && linmasName.includes(reporterName) && reporterName.length > 3)
+        );
+        const matchDesa = Boolean(linmasDesa && kDesa === linmasDesa);
+        const matchKec = Boolean(linmasKec && kKec === linmasKec);
+
+        return matchReporter || matchDesa || matchKec;
+      });
+
+      return own;
     }
     if (assignedKecamatan) {
-      return kegiatanList.filter(k => (k.kecamatan || '').toLowerCase() === assignedKecamatan.toLowerCase());
+      return (kegiatanList || []).filter(k => k && String(k.kecamatan || '').toLowerCase() === assignedKecamatan.toLowerCase());
     }
-    return kegiatanList;
-  }, [kegiatanList, isLinmas, assignedKecamatan, linmasName, currentUser]);
+    return (kegiatanList || []);
+  }, [kegiatanList, isLinmas, assignedKecamatan, linmasName, linmasNik, linmasDesa, linmasKec]);
 
   // Filtering Logic
   const filteredList = scopedKegiatan.filter(item => {
@@ -244,11 +262,11 @@ export default function KegiatanPatroli({
     );
 
     const defaultPetugas = isLinmas 
-      ? (currentUser?.nama ? `${currentUser.nama} (Anggota Satlinmas)` : 'Muhammad Arsyad (Anggota Satlinmas)') 
+      ? (currentUser?.nama || matchingLinmas?.nama || 'Muhammad Arsyad') 
       : (matchingLinmas ? matchingLinmas.nama : '');
 
     const defaultNik = isLinmas 
-      ? (currentUser?.nik || '') 
+      ? (currentUser?.nik || matchingLinmas?.nik || '') 
       : (matchingLinmas?.nik || '');
 
     setFormData({
@@ -349,9 +367,10 @@ export default function KegiatanPatroli({
       return;
     }
 
-    saveKegiatanPatroli(formData);
+    const saved = saveKegiatanPatroli(formData);
     setIsFormModalOpen(false);
     if (onRefreshData) onRefreshData();
+    alert(`Laporan patroli lapangan "${saved.judulPatroli}" (${saved.kode}) berhasil disimpan!`);
   };
 
   // Delete Handler
