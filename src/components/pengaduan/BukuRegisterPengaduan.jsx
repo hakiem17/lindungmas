@@ -1540,7 +1540,7 @@ export default function BukuRegisterPengaduan({ rekapList = [], onRefreshData })
           {/* WILAYAH: KECAMATAN & DESA */}
           <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1 flex items-center gap-1">
+              <label className="font-semibold text-slate-700 mb-1 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-[#F0B429]" />
                 <span>Kecamatan *</span>
               </label>

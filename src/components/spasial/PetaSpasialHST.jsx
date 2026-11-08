@@ -1366,7 +1366,7 @@ export default function PetaSpasialHST({
 
           {/* SELECTOR 2: DESA / KELURAHAN */}
           <div>
-            <label className="block text-[11px] font-bold text-[#0F2A4A] mb-1 flex items-center justify-between">
+            <label className="text-[11px] font-bold text-[#0F2A4A] mb-1 flex items-center justify-between">
               <span>🏘️ 2. Filter Desa / Kelurahan:</span>
               <span className="text-[10px] text-slate-400 font-semibold font-mono">
                 {availableDesaList.length} Wilayah

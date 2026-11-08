@@ -369,8 +369,8 @@ export default function LaporanRekapSatlinmas({
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 w-full md:w-auto md:flex-1">
           {/* Pilihan Bulan */}
           <div className="sm:col-span-5">
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span>Periode Bulan</span>
             </label>
             <select
