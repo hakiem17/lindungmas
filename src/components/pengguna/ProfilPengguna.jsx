@@ -560,12 +560,14 @@ export default function ProfilPengguna({
   }, [profilPenggunaList]);
 
   const filteredAdminUsers = useMemo(() => {
+    const term = (searchTermPegawai || '').toLowerCase().trim();
     return adminUsers.filter(user => {
-      const matchSearch = 
-        (user.nama && user.nama.toLowerCase().includes(searchTermPegawai.toLowerCase())) ||
-        (user.nip && user.nip.toLowerCase().includes(searchTermPegawai.toLowerCase())) ||
-        (user.email && user.email.toLowerCase().includes(searchTermPegawai.toLowerCase())) ||
-        (user.jabatan && user.jabatan.toLowerCase().includes(searchTermPegawai.toLowerCase()));
+      if (!user) return false;
+      const matchSearch = !term ||
+        String(user.nama || '').toLowerCase().includes(term) ||
+        String(user.nip || '').toLowerCase().includes(term) ||
+        String(user.email || '').toLowerCase().includes(term) ||
+        String(user.jabatan || '').toLowerCase().includes(term);
 
       const matchStatus = selectedStatusFilterPegawai === 'semua' || user.status === selectedStatusFilterPegawai;
       return matchSearch && matchStatus;
@@ -574,23 +576,25 @@ export default function ProfilPengguna({
 
   // 2. Akun Operator Kecamatan (11 Kecamatan Kab. HST)
   const kecamatanUsers = useMemo(() => {
-    return profilPenggunaList.filter(u => u.peran === 'operator_kecamatan' || u.peran === 'operator');
+    return profilPenggunaList.filter(u => u && (u.peran === 'operator_kecamatan' || u.peran === 'operator'));
   }, [profilPenggunaList]);
 
   const filteredKecamatanUsers = useMemo(() => {
+    const term = (searchTermKecamatan || '').toLowerCase().trim();
     return kecamatanUsers.filter(user => {
-      const matchSearch = 
-        (user.nama && user.nama.toLowerCase().includes(searchTermKecamatan.toLowerCase())) ||
-        (user.nip && user.nip.toLowerCase().includes(searchTermKecamatan.toLowerCase())) ||
-        (user.email && user.email.toLowerCase().includes(searchTermKecamatan.toLowerCase())) ||
-        (user.jabatan && user.jabatan.toLowerCase().includes(searchTermKecamatan.toLowerCase())) ||
-        (user.wilayahTugas && user.wilayahTugas.toLowerCase().includes(searchTermKecamatan.toLowerCase()));
+      if (!user) return false;
+      const matchSearch = !term ||
+        String(user.nama || '').toLowerCase().includes(term) ||
+        String(user.nip || '').toLowerCase().includes(term) ||
+        String(user.email || '').toLowerCase().includes(term) ||
+        String(user.jabatan || '').toLowerCase().includes(term) ||
+        String(user.wilayahTugas || '').toLowerCase().includes(term);
 
-      const matchKec = filterWilayahKecamatan === 'semua' || (user.wilayahTugas || '').toLowerCase() === filterWilayahKecamatan.toLowerCase();
+      const matchKec = filterWilayahKecamatan === 'semua' || String(user.wilayahTugas || '').toLowerCase() === filterWilayahKecamatan.toLowerCase();
       const matchStatus = filterStatusKecamatan === 'semua' || user.status === filterStatusKecamatan;
 
       if (isOperator && currentUser?.wilayahTugas) {
-        const matchTerritory = (user.wilayahTugas || '').toLowerCase() === currentUser.wilayahTugas.toLowerCase();
+        const matchTerritory = String(user.wilayahTugas || '').toLowerCase() === String(currentUser.wilayahTugas || '').toLowerCase();
         return matchSearch && matchKec && matchStatus && matchTerritory;
       }
       return matchSearch && matchKec && matchStatus;
@@ -600,8 +604,9 @@ export default function ProfilPengguna({
   // Cakupan 11 Wilayah Kecamatan
   const kecamatanCoverage = useMemo(() => {
     return effectiveWilayahList.map(kec => {
+      const kecName = String(kec?.nama || kec?.kecamatan || '').toLowerCase();
       const operators = kecamatanUsers.filter(u => 
-        (u.wilayahTugas || '').toLowerCase() === kec.nama.toLowerCase()
+        String(u.wilayahTugas || '').toLowerCase() === kecName
       );
       return {
         ...kec,
@@ -619,20 +624,21 @@ export default function ProfilPengguna({
   const handleBatchCreateDefaultKecamatanAccounts = () => {
     let countCreated = 0;
     effectiveWilayahList.forEach(kec => {
+      const kecName = String(kec?.nama || kec?.kecamatan || '');
       const exists = profilPenggunaList.some(u => 
         (u.peran === 'operator_kecamatan' || u.peran === 'operator') &&
-        (u.wilayahTugas || '').toLowerCase() === kec.nama.toLowerCase()
+        String(u.wilayahTugas || '').toLowerCase() === kecName.toLowerCase()
       );
       if (!exists) {
-        const slug = kec.nama.toLowerCase().replace(/\s+/g, '');
+        const slug = kecName.toLowerCase().replace(/\s+/g, '');
         const usernameKec = `operator.${slug}`;
         saveProfilPengguna({
-          nama: `Operator Kec. ${kec.nama}`,
+          nama: `Operator Kec. ${kecName}`,
           nip: usernameKec,
           peran: 'operator_kecamatan',
-          wilayahTugas: kec.nama,
+          wilayahTugas: kecName,
           desaTugas: null,
-          jabatan: `Kasi Trantibum & Operator Kec. ${kec.nama}`,
+          jabatan: `Kasi Trantibum & Operator Kec. ${kecName}`,
           pangkat: 'Penata Muda (III/a)',
           noHp: '081250000000',
           email: `${usernameKec}@satpolpp.hstkab.go.id`,
@@ -653,24 +659,26 @@ export default function ProfilPengguna({
 
   // 3. Linmas Users (Khusus Personel Linmas)
   const linmasUsers = useMemo(() => {
-    return profilPenggunaList.filter(u => u.peran === 'anggota_linmas' || u.peran === 'linmas');
+    return profilPenggunaList.filter(u => u && (u.peran === 'anggota_linmas' || u.peran === 'linmas'));
   }, [profilPenggunaList]);
 
   const filteredLinmasUsers = useMemo(() => {
+    const term = (searchTermLinmas || '').toLowerCase().trim();
     return linmasUsers.filter(user => {
-      const matchSearch = 
-        (user.nama && user.nama.toLowerCase().includes(searchTermLinmas.toLowerCase())) ||
-        (user.nik && user.nik.toLowerCase().includes(searchTermLinmas.toLowerCase())) ||
-        (user.nip && user.nip.toLowerCase().includes(searchTermLinmas.toLowerCase())) ||
-        (user.noRegistrasi && user.noRegistrasi.toLowerCase().includes(searchTermLinmas.toLowerCase())) ||
-        (user.desaTugas && user.desaTugas.toLowerCase().includes(searchTermLinmas.toLowerCase())) ||
-        (user.wilayahTugas && user.wilayahTugas.toLowerCase().includes(searchTermLinmas.toLowerCase()));
+      if (!user) return false;
+      const matchSearch = !term ||
+        String(user.nama || '').toLowerCase().includes(term) ||
+        String(user.nik || '').toLowerCase().includes(term) ||
+        String(user.nip || '').toLowerCase().includes(term) ||
+        String(user.noRegistrasi || '').toLowerCase().includes(term) ||
+        String(user.desaTugas || '').toLowerCase().includes(term) ||
+        String(user.wilayahTugas || '').toLowerCase().includes(term);
 
-      const matchKec = filterKecamatanLinmas === 'semua' || (user.wilayahTugas || '').toLowerCase() === filterKecamatanLinmas.toLowerCase();
+      const matchKec = filterKecamatanLinmas === 'semua' || String(user.wilayahTugas || '').toLowerCase() === filterKecamatanLinmas.toLowerCase();
       const matchStatus = filterStatusLinmas === 'semua' || user.status === filterStatusLinmas;
 
       if (isOperator && currentUser?.wilayahTugas) {
-        const matchTerritory = (user.wilayahTugas || '').toLowerCase() === currentUser.wilayahTugas.toLowerCase();
+        const matchTerritory = String(user.wilayahTugas || '').toLowerCase() === String(currentUser.wilayahTugas || '').toLowerCase();
         return matchSearch && matchKec && matchStatus && matchTerritory;
       }
       return matchSearch && matchKec && matchStatus;
@@ -1844,15 +1852,26 @@ export default function ProfilPengguna({
                     </tr>
                   ) : (
                     filteredLinmasUsers.map((user, idx) => {
-                      const isDanru = (user.jabatan || '').toLowerCase().includes('danru');
-                      const matchingLinmas = satlinmasList.find(s => 
-                        (user.nik && s.nik === user.nik) || 
-                        (user.noRegistrasi && s.noRegistrasi === user.noRegistrasi) ||
-                        (s.nama && user.nama && s.nama.toLowerCase().trim() === user.nama.toLowerCase().trim())
-                      );
+                      if (!user) return null;
+                      const isDanru = String(user.jabatan || '').toLowerCase().includes('danru');
+                      const matchingLinmas = Array.isArray(satlinmasList) ? satlinmasList.find(s => {
+                        if (!s) return false;
+                        const sNik = String(s.nik || '').trim();
+                        const uNik = String(user.nik || user.nip || '').trim();
+                        if (uNik && sNik && sNik === uNik) return true;
+
+                        const sReg = String(s.noRegistrasi || '').trim();
+                        const uReg = String(user.noRegistrasi || '').trim();
+                        if (uReg && sReg && sReg === uReg) return true;
+
+                        const sNama = String(s.nama || '').toLowerCase().trim();
+                        const uNama = String(user.nama || '').toLowerCase().trim();
+                        return Boolean(sNama && uNama && sNama === uNama);
+                      }) : null;
                       const displayFoto = user.foto || matchingLinmas?.pasFoto;
+                      const displayName = String(user.nama || 'Petugas Linmas');
                       return (
-                        <tr key={user.id || user.nik || user.nip} className="hover:bg-slate-50 transition-colors">
+                        <tr key={user.id || user.nik || user.nip || idx} className="hover:bg-slate-50 transition-colors">
                           <td className="py-3 px-3 border-r border-slate-200 text-center font-mono text-slate-500">
                             {idx + 1}
                           </td>
@@ -1862,13 +1881,13 @@ export default function ProfilPengguna({
                             <div className="flex items-center gap-2.5">
                               <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-emerald-800 font-bold shrink-0 overflow-hidden text-xs shadow-2xs">
                                 {displayFoto ? (
-                                  <img src={displayFoto} alt={user.nama} className="w-full h-full object-cover" />
+                                  <img src={displayFoto} alt={displayName} className="w-full h-full object-cover" />
                                 ) : (
-                                  user.nama?.charAt(0) || 'L'
+                                  displayName.charAt(0) || 'L'
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-bold text-slate-900 leading-snug truncate">{user.nama}</p>
+                                <p className="font-bold text-slate-900 leading-snug truncate">{displayName}</p>
                                 <div className="flex items-center gap-1 mt-0.5">
                                   {isDanru ? (
                                     <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-100 text-purple-800 border border-purple-200 uppercase">

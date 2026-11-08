@@ -191,14 +191,15 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Sesi tersimpan di localStorage tapi sesi Supabase sudah habis -> paksa login ulang
+    // Sinkronkan status sesi Supabase Auth hanya untuk pengguna yang login via Supabase Auth
     supabase.auth.getSession().then(({ data }) => {
-      if (!data?.session && getAuthSession()) {
+      const session = getAuthSession();
+      if (session?.isSupabaseAuth && !data?.session) {
         clearAuthSession();
         setCurrentUser(null);
         setCurrentView('landing');
       }
-    });
+    }).catch(() => {});
     refreshAllData();
 
     // Subscribe to realtime database changes from Supabase

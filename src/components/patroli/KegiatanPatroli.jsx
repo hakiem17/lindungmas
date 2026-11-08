@@ -91,21 +91,23 @@ export default function KegiatanPatroli({
 
   // Dynamic Desa list based on selected Kecamatan in Form
   const availableDesa = React.useMemo(() => {
-    const foundKec = wilayahList.find(k => k.nama.toLowerCase() === (formData.kecamatan || '').toLowerCase());
-    return foundKec ? foundKec.desa : [];
+    const curKec = String(formData.kecamatan || '').trim().toLowerCase();
+    const foundKec = (wilayahList || []).find(k => String(k?.nama || k?.kecamatan || '').trim().toLowerCase() === curKec);
+    return foundKec?.desa || [];
   }, [formData.kecamatan, wilayahList]);
 
   // Anggota Linmas Terdaftar HANYA di Desa terpilih dari Database (tanpa desa lain)
   const availableLinmas = React.useMemo(() => {
-    if (!satlinmasList || satlinmasList.length === 0) {
+    if (!satlinmasList || !Array.isArray(satlinmasList) || satlinmasList.length === 0) {
       return [];
     }
-    const curKec = (formData.kecamatan || '').trim().toLowerCase();
-    const curDesa = (formData.desaKelurahan || '').trim().toLowerCase();
+    const curKec = String(formData.kecamatan || '').trim().toLowerCase();
+    const curDesa = String(formData.desaKelurahan || '').trim().toLowerCase();
 
     return satlinmasList.filter(s => 
-      (s.kecamatan || '').trim().toLowerCase() === curKec &&
-      (s.desaKelurahan || '').trim().toLowerCase() === curDesa
+      s &&
+      String(s.kecamatan || '').trim().toLowerCase() === curKec &&
+      String(s.desaKelurahan || '').trim().toLowerCase() === curDesa
     );
   }, [satlinmasList, formData.kecamatan, formData.desaKelurahan]);
 
@@ -1044,12 +1046,13 @@ export default function KegiatanPatroli({
                       disabled={!!assignedKecamatan || isLinmas}
                       onChange={(e) => {
                         const newKec = e.target.value;
-                        const foundKec = wilayahList.find(k => k.nama.toLowerCase() === newKec.toLowerCase());
+                        const foundKec = (wilayahList || []).find(k => String(k?.nama || k?.kecamatan || '').toLowerCase() === String(newKec || '').toLowerCase());
                         const firstDesa = foundKec && foundKec.desa && foundKec.desa[0] ? foundKec.desa[0] : '';
                         
-                        const matchingLinmas = satlinmasList.find(s => 
-                          (s.kecamatan || '').toLowerCase() === newKec.toLowerCase() && 
-                          (s.desaKelurahan || '').toLowerCase() === firstDesa.toLowerCase()
+                        const matchingLinmas = (Array.isArray(satlinmasList) ? satlinmasList : []).find(s => 
+                          s &&
+                          String(s.kecamatan || '').toLowerCase() === String(newKec || '').toLowerCase() && 
+                          String(s.desaKelurahan || '').toLowerCase() === String(firstDesa || '').toLowerCase()
                         );
 
                         setFormData({
@@ -1082,9 +1085,10 @@ export default function KegiatanPatroli({
                       value={formData.desaKelurahan}
                       onChange={(e) => {
                         const newDesa = e.target.value;
-                        const matchingLinmas = satlinmasList.find(s => 
-                          (s.kecamatan || '').toLowerCase() === (formData.kecamatan || '').toLowerCase() && 
-                          (s.desaKelurahan || '').toLowerCase() === newDesa.toLowerCase()
+                        const matchingLinmas = (Array.isArray(satlinmasList) ? satlinmasList : []).find(s => 
+                          s &&
+                          String(s.kecamatan || '').toLowerCase() === String(formData.kecamatan || '').toLowerCase() && 
+                          String(s.desaKelurahan || '').toLowerCase() === String(newDesa || '').toLowerCase()
                         );
 
                         setFormData({

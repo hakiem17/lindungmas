@@ -77,6 +77,7 @@ export default function LoginPage({
             noHp: profil.no_hp || '',
             email: profil.email || auth.user.email,
             foto: profil.foto_url || '',
+            isSupabaseAuth: true,
             loginTime: new Date().toISOString()
           };
         }
@@ -117,6 +118,7 @@ export default function LoginPage({
             noHp: found.noHp || '',
             email: found.email,
             foto: found.foto || '',
+            isSupabaseAuth: false,
             loginTime: new Date().toISOString()
           };
         }

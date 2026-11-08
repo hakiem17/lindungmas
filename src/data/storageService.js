@@ -213,11 +213,13 @@ export const buildWilayahFromDB = (rows) => {
   // Group rows by kecamatan
   const grouped = new Map();
   rows.forEach(r => {
-    if (!grouped.has(r.kecamatan)) {
-      grouped.set(r.kecamatan, {
-        id: `kec-${r.kecamatan.toLowerCase().replace(/\s+/g, '-')}`,
-        nama: r.kecamatan,
-        pusat: r.pusat_pemerintahan || r.desa_kelurahan,
+    if (!r || !r.kecamatan) return;
+    const kecNama = String(r.kecamatan).trim();
+    if (!grouped.has(kecNama)) {
+      grouped.set(kecNama, {
+        id: `kec-${kecNama.toLowerCase().replace(/\s+/g, '-')}`,
+        nama: kecNama,
+        pusat: r.pusat_pemerintahan || r.desa_kelurahan || kecNama,
         lat: Number(r.lat) || -2.5833,
         lng: Number(r.lng) || 115.3811,
         kodePos: r.kode_pos || '71311',
@@ -225,17 +227,17 @@ export const buildWilayahFromDB = (rows) => {
         desa: []
       });
     }
-    const item = grouped.get(r.kecamatan);
+    const item = grouped.get(kecNama);
     if (r.desa_kelurahan && !item.desa.includes(r.desa_kelurahan)) {
-      item.desa.push(r.desa_kelurahan);
+      item.desa.push(String(r.desa_kelurahan).trim());
     }
   });
 
   // Merge with existing KECAMATAN_HST villages to retain comprehensive lists
   const result = Array.from(grouped.values()).map(kec => {
-    const defaultKec = KECAMATAN_HST.find(k => k.nama.toLowerCase() === kec.nama.toLowerCase());
+    const defaultKec = KECAMATAN_HST.find(k => String(k?.nama || '').toLowerCase() === String(kec?.nama || '').toLowerCase());
     if (defaultKec) {
-      const mergedDesa = Array.from(new Set([...kec.desa, ...defaultKec.desa]));
+      const mergedDesa = Array.from(new Set([...kec.desa, ...(defaultKec.desa || [])]));
       return {
         ...defaultKec,
         ...kec,
@@ -244,7 +246,6 @@ export const buildWilayahFromDB = (rows) => {
     }
     return kec;
   });
-
   return result.length > 0 ? result : KECAMATAN_HST;
 };
 
